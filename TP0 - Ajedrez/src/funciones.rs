@@ -20,7 +20,10 @@ use crate::pieza_struct::Pieza;
 ///
 fn se_repite_casillero(casillero: char, ult_casillero: char) -> Result<bool, Error> {
     if casillero == ult_casillero {
-        return Err(Error::new(InvalidInput, "Formato de tablero inválido."));
+        return Err(Error::new(
+            InvalidInput,
+            format!("{}Formato de tablero inválido.", ERROR_MSJ),
+        ));
     }
     Ok(false)
 }
@@ -113,7 +116,10 @@ fn es_cantidad_piezas_correcta(
         if *p_blancas > 0 {
             return Err(Error::new(
                 InvalidInput,
-                "Se ha encontrado más de una pieza blanca en el tablero.",
+                format!(
+                    "{}Se ha encontrado más de una pieza blanca en el tablero.",
+                    ERROR_MSJ
+                ),
             ));
         }
 
@@ -122,7 +128,10 @@ fn es_cantidad_piezas_correcta(
         if *p_negras > 0 {
             return Err(Error::new(
                 InvalidInput,
-                "Se ha encontrado más de una pieza negra en el tablero.",
+                format!(
+                    "{}Se ha encontrado más de una pieza negra en el tablero.",
+                    ERROR_MSJ
+                ),
             ));
         }
 
@@ -154,7 +163,10 @@ fn es_casillero_valido(
     if !es_caracter_valido(casillero) {
         return Err(Error::new(
             InvalidData,
-            "Se ha encontrado una pieza desconocida en el tablero.",
+            format!(
+                "{}Se ha encontrado una pieza desconocida en el tablero.",
+                ERROR_MSJ
+            ),
         ));
     }
 
@@ -188,7 +200,10 @@ fn es_dimension_correcta(casillero: char, j: u8) -> Result<bool, Error> {
     if casillero == SALTO && j != DIMENSION_AJEDREZ {
         return Err(Error::new(
             InvalidData,
-            "La dimensión del tablero no coincide con uno de 8x8.",
+            format!(
+                "{}La dimensión del tablero no coincide con uno de 8x8.",
+                ERROR_MSJ
+            ),
         ));
     }
     Ok(true)
@@ -277,7 +292,10 @@ pub fn cargar_tablero(contenido: &str, blanca: &mut Pieza, negra: &mut Pieza) ->
     if piezas_blancas != PIEZAS_POR_COLOR || piezas_negras != PIEZAS_POR_COLOR {
         return Err(Error::new(
             InvalidData,
-            "No se han encontrado las suficientes piezas por cada equipo como para jugar.",
+            format!(
+                "{}No se han encontrado las suficientes piezas por cada equipo como para jugar.",
+                ERROR_MSJ
+            ),
         ));
     }
 
@@ -350,7 +368,7 @@ pub fn leer_archivo() -> Result<String, Error> {
     let args: Vec<String> = env::args().collect();
 
     if args.len() == 1 {
-        return Err(Error::new(InvalidInput, "Se requiere una ruta de acceso al archivo .txt con las posiciones de las piezas en el tablero."));
+        return Err(Error::new(InvalidInput, format!("{}Se requiere una ruta de acceso al archivo .txt con las posiciones de las piezas en el tablero.", ERROR_MSJ)));
     }
 
     fs::read_to_string(&args[1])
@@ -508,7 +526,10 @@ mod unit_tests {
             ),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "Se ha encontrado más de una pieza negra en el tablero."
+                format!(
+                    "{}Se ha encontrado más de una pieza negra en el tablero.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -524,7 +545,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un casillero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "Se ha encontrado una pieza desconocida en el tablero."
+                format!(
+                    "{}Se ha encontrado una pieza desconocida en el tablero.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -551,7 +575,10 @@ mod unit_tests {
 
         match es_casillero_valido(casillero, ult_casillero, &mut blanca, &mut negra) {
             Ok(_) => assert!(false, "No debería ser considerado un casillero válido."),
-            Err(error) => assert_eq!(error.to_string(), "Formato de tablero inválido."),
+            Err(error) => assert_eq!(
+                error.to_string(),
+                format!("{}Formato de tablero inválido.", ERROR_MSJ)
+            ),
         };
     }
 
@@ -566,7 +593,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un casillero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "Se ha encontrado más de una pieza blanca en el tablero."
+                format!(
+                    "{}Se ha encontrado más de una pieza blanca en el tablero.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -582,7 +612,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un casillero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "Se ha encontrado más de una pieza negra en el tablero."
+                format!(
+                    "{}Se ha encontrado más de una pieza negra en el tablero.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -603,7 +636,7 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "No se han encontrado las suficientes piezas por cada equipo como para jugar."
+                format!("{}No se han encontrado las suficientes piezas por cada equipo como para jugar.", ERROR_MSJ)
             ),
         };
     }
@@ -647,7 +680,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "La dimensión del tablero no coincide con uno de 8x8."
+                format!(
+                    "{}La dimensión del tablero no coincide con uno de 8x8.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -668,7 +704,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "La dimensión del tablero no coincide con uno de 8x8."
+                format!(
+                    "{}La dimensión del tablero no coincide con uno de 8x8.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
@@ -687,7 +726,10 @@ mod unit_tests {
 
         match cargar_tablero(contenido, &mut blanca, &mut negra) {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
-            Err(error) => assert_eq!(error.to_string(), "Formato de tablero inválido."),
+            Err(error) => assert_eq!(
+                error.to_string(),
+                format!("{}Formato de tablero inválido.", ERROR_MSJ)
+            ),
         };
     }
 
@@ -707,7 +749,7 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "No se han encontrado las suficientes piezas por cada equipo como para jugar."
+                format!("{}No se han encontrado las suficientes piezas por cada equipo como para jugar.", ERROR_MSJ)
             ),
         };
         assert_eq!(blanca.posicion.x, 3);
@@ -732,7 +774,10 @@ mod unit_tests {
             Ok(_) => assert!(false, "No debería ser considerado un tablero válido."),
             Err(error) => assert_eq!(
                 error.to_string(),
-                "Se ha encontrado más de una pieza blanca en el tablero."
+                format!(
+                    "{}Se ha encontrado más de una pieza blanca en el tablero.",
+                    ERROR_MSJ
+                )
             ),
         };
     }
