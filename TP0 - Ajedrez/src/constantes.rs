@@ -1,6 +1,4 @@
-pub const ERROR_MSJ: &'static str = "ERROR: ";
-pub const ERROR: i8 = -1;
-pub const EXITO: i8 = 0;
+pub const ERROR_MSJ: &str = "ERROR: ";
 pub const DIMENSION_AJEDREZ: u8 = 8;
 pub const PIEZAS_POR_COLOR: u8 = 1;
 pub const ESPACIO: char = ' ';
@@ -15,4 +13,4 @@ pub const PEON: char = 'P';
 pub const EMPATE: char = 'E';
 pub const GANA_BLANCA: char = 'B';
 pub const GANA_NEGRA: char = 'N';
-pub const NADIE_GANA: char = 'P'; 
+pub const NADIE_GANA: char = 'P';
