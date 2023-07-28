@@ -1,2 +1,2 @@
-# 23C1-Rusticos-AGVM
-Repo for Rust Taller De Programacion 1 FIUBA
+# Taller de Programación 1 - FIUBA
+Repo for Taller De Programación 1 Rust assignments
