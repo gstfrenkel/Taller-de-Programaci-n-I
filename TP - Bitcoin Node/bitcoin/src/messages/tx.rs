@@ -14,6 +14,7 @@ impl Tx {
     /// Creates a new `Tx` with the given start string and transaction.
     pub fn new(start_string: Vec<u8>, transaction: Transaction) -> Tx {
         let header = MessageHeader::new(start_string, TX_COMMAND.to_string());
+
         let mut tx = Tx {
             header,
             transaction
@@ -34,7 +35,7 @@ impl Tx {
     /// Converts the `Tx` object to its byte representation.
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut buff = self.header.as_bytes();
-        buff.extend(self.transaction.as_bytes(false));
+        buff.extend(self.transaction.as_bytes(self.transaction.is_segwit()));
 
         buff
     }

@@ -6,7 +6,7 @@ use std::io::Read;
 /// Represents a variable-size unsigned integer using compact size encoding.
 #[derive(Debug, PartialEq, Clone)]
 pub struct CompactSizeUInt {
-    value: u64,
+    pub value: u64,
 }
 
 impl CompactSizeUInt {

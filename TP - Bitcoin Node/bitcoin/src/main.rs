@@ -67,7 +67,7 @@ fn main() {
     let mut streams: Vec<TcpStream> = match handshake(&settings) {
         Ok(streams) => streams,
         Err(err) => {
-            println!("{:?}", err);
+            println!("HOLAAAAA A{:?}", err);
             return;
         }
     };
@@ -99,6 +99,7 @@ fn main() {
         Ok(_) => {
             if let Ok(locked_blockchain) = blockchain.lock(){
                 println!("Block download has succesfully finished after {} downloads.", locked_blockchain.cant_blocks());
+                drop(locked_blockchain);
             } else{
                 println!("Attempt to lock blockchain has failed.");
                 return;
@@ -131,7 +132,7 @@ fn main() {
     };
 
     if let Err(err) = update_wallet(wallet, blockchain, utxo, mempool, settings, streams_tx_broadcast){
-        println!("Attempt to update wallet has failed: {:?}.", err);
+        println!("Attempt to communicate with wallet has failed: {:?}.", err);
     };
      
     for handle_broadcasting in handles_broadcasting{

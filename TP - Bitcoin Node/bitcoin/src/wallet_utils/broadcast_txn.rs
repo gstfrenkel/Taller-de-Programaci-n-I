@@ -70,10 +70,10 @@ impl BroadcastTxn {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `BroadcastTxn` object.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self, segwit: bool) -> Vec<u8> {
 
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
-        buffer.extend(&self.transaction.as_bytes(false));
+        buffer.extend(&self.transaction.as_bytes(segwit));
 
         buffer
     }

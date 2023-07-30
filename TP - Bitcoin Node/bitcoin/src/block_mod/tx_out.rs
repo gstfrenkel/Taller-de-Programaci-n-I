@@ -8,9 +8,9 @@ use std::io::Read;
 /// Represents a transaction output (TxOut) in a transaction.
 #[derive(Debug, Clone)]
 pub struct TxOut {
-    value: i64,
-    pk_script_bytes: CompactSizeUInt,
-    pk_script: Vec<u8>
+    pub value: i64,
+    pub pk_script_bytes: CompactSizeUInt,
+    pub pk_script: Vec<u8>
 }
 
 impl TxOut {
@@ -70,5 +70,9 @@ impl TxOut {
 
     pub fn get_pk_script_bytes(&self) -> CompactSizeUInt{
         self.pk_script_bytes.clone()
+    }
+
+    pub fn is_p2wpkh(&self) -> bool{
+        self.pk_script.len() == 22 && self.pk_script.first() == Some(&0) && self.pk_script.get(1) == Some(&20)
     }
 }

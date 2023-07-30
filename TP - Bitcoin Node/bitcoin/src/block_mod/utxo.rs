@@ -47,8 +47,10 @@ impl UnspentTx {
             self.remove_tx_out(tx_in);
         }
 
+        let new_tx_id = new_tx.get_id(false);
+
         for (index, tx_out) in new_tx.get_tx_out_list().iter().enumerate() {
-            self.add_tx_out(tx_out, new_tx.get_id(false), index);
+            self.add_tx_out(tx_out, &new_tx_id, index);
         }
     }
 
@@ -85,9 +87,9 @@ impl UnspentTx {
     /// * `new_tx_out` - A reference to the `TxOut` object representing the transaction output to be added.
     /// * `tx_id` - The hashed ID of the transaction to which the output belongs.
     /// * `index` - The index of the output within the transaction.
-    fn add_tx_out(&mut self, new_tx_out: &TxOut, tx_id: Vec<u8>, index: usize) {
+    fn add_tx_out(&mut self, new_tx_out: &TxOut, tx_id: &[u8], index: usize) {
         //corroborar el tipo de tx_id
-        let transation_outputs = self.utxo.entry(tx_id).or_insert(HashMap::new());
+        let transation_outputs = self.utxo.entry(tx_id.to_vec()).or_insert(HashMap::new());
 
         transation_outputs
             .entry(index as u32)

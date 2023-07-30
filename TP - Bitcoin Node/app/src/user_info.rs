@@ -1,6 +1,6 @@
 use bitcoin::{block_mod::tx_out::TxOut, wallet_utils::{transactions::Transactions, wallet_tx::WalletTx}};
 
-use crate::transactions::create_transactions::{pk_script_from_pubkey, is_string_bech32};
+use crate::transactions::create_transactions::{pk_script_from_pubkey};
 
 #[derive(Debug)]
 /// Represents the information related to a user's wallet.
@@ -17,11 +17,11 @@ pub struct UserInfo {
 }
 
 impl UserInfo {
-    pub fn new(public_key: Vec<u8>, private_key: Vec<u8>, address: String) -> UserInfo{
+    pub fn new(public_key: Vec<u8>, private_key: Vec<u8>, bech32: bool) -> UserInfo{
         UserInfo {
             public_key,
             private_key,
-            bech32: is_string_bech32(address),
+            bech32,
             utxo: vec![],
             confirmed_txs_send: vec![],
             confirmed_txs_recv: vec![],

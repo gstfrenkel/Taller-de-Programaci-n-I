@@ -1,4 +1,4 @@
-use bitcoin::messages::read_from_bytes::{decode_hex, read_string_from_bytes};
+use bitcoin::messages::read_from_bytes::{decode_hex, read_string_from_bytes, encode_hex};
 use bitcoin::wallet_utils::broadcast_txn::BroadcastTxn;
 use bitcoin::wallet_utils::get_proof::GetProof;
 use bitcoin::wallet_utils::merkle_block::MerkleBlock;
@@ -14,7 +14,7 @@ use crate::accounts::Accounts;
 use crate::proof_of_inclusion::get_proof_of_inclusion::*;
 use crate::interface_error::InterfaceError;
 use crate::transactions::create_transaction_error::TransactionCreateError;
-use crate::transactions::create_transactions::create_transaction;
+use crate::transactions::create_transactions::{create_transaction, is_string_bech32, address_from_pubkey};
 use crate::views::transaction_tree_view::create_transaction_tree_view;
 use crate::views::transaction_view::create_transaction_view;
 use super::handle_styles::set_button_style;
@@ -204,7 +204,7 @@ fn clean_entry(entry:&Entry) {
 ///
 /// This function validates the provided username by checking its length. It returns `true` if the length of the username is greater than 0 and less than 20, indicating that it meets the required criteria for a valid username.
 ///
-fn valid_username(username:&str) -> bool {
+fn is_username_valid(username:&str) -> bool {
     !username.is_empty() && username.len() < 20
 } 
 
@@ -222,7 +222,7 @@ fn valid_username(username:&str) -> bool {
 ///
 /// This function validates the provided public key by checking its length and ensuring that all characters are ASCII hexadecimal digits. It returns `true` if the length of the public key is 66 (indicating the expected length for a valid public key) and all characters in the public key are ASCII hexadecimal digits.
 ///
-fn valid_public_key(public_key: &str) -> bool {
+fn is_pubkey_valid(public_key: &str) -> bool {
     public_key.len() == 66 && public_key.chars().all(|c| c.is_ascii_hexdigit())
 }
 
@@ -241,9 +241,19 @@ fn valid_public_key(public_key: &str) -> bool {
 ///
 /// This function validates the provided private key by checking its length and ensuring that all characters are ASCII hexadecimal digits. It returns `true` if the length of the private key is 64 (indicating the expected length for a valid private key) and all characters in the private key are ASCII hexadecimal digits.
 ///
-fn valid_private_key(private_key:&str) -> bool {
+fn is_private_key_valid(private_key:&str) -> bool {
     private_key.len() == 64 && private_key.chars().all(|c| c.is_ascii_hexdigit())
 } 
+
+fn does_pubkey_match_address(pubkey: &[u8], address: &str) -> bool{
+    if !is_string_bech32(address.to_string()){
+        return false;
+    }
+    
+    let addr = String::from_utf8_lossy(&address_from_pubkey(&pubkey, true)).to_string();
+    
+    addr == address
+}
 
 /// Sets up the login button and its associated functionality.
 ///
@@ -303,31 +313,28 @@ fn set_login_button(builder: &Builder, accounts:Arc<Mutex<Accounts>>) -> Result<
         let private_key = private_key_entry.get_text();
         let address = address_entry.get_text();
 
-        
-        if !valid_username(username.as_str()) || !valid_public_key(public_key.as_str()) || !valid_private_key(private_key.as_str()) {
-            let mut auth_text = "Please complete the entries correctly".to_string();
+        if !is_username_valid(username.as_str()) || !is_pubkey_valid(public_key.as_str()) || !is_private_key_valid(private_key.as_str()) {
+            let mut auth_text = "Please, fill in the inputs correctly".to_string();
 
-            if !valid_username(username.as_str()) {
-                auth_text += "\n \n - Username is invalid";
+            if !is_username_valid(username.as_str()) {
+                auth_text += "\n \n - Invalid username";
             }
             
-            if !valid_public_key(public_key.as_str()) {
-                auth_text += "\n \n - Public key is invalid";
+            if !is_pubkey_valid(public_key.as_str()) {
+                auth_text += "\n \n - Invalid public key";
             }
 
-            if !valid_private_key(private_key.as_str()) {
-                auth_text += "\n \n - Private key is invalid";
+            if !is_private_key_valid(private_key.as_str()) {
+                auth_text += "\n \n - Invalid private key";
             }
 
-            
-            
             title_label.set_text("Login Authentication Error");
             advice_label.set_text(auth_text.as_str());
             user_authentication_dialog.show_all();
             return
         }
 
-        let new_account_button:Button = Button::new();
+        let new_account_button = Button::new();
         new_account_button.set_label(&username);
 
         let username_account = username.to_string();
@@ -339,7 +346,6 @@ fn set_login_button(builder: &Builder, accounts:Arc<Mutex<Accounts>>) -> Result<
                 shared_actual_account_label.set_text(&username_account.clone());
             }
         });
-
 
         clean_entry(&username_entry);
         clean_entry(&public_key_entry);
@@ -357,7 +363,10 @@ fn set_login_button(builder: &Builder, accounts:Arc<Mutex<Accounts>>) -> Result<
                 if let Ok(private_key_bytes) = decode_hex(&private_key){
                     actual_account_label.set_text(&username);
                     accounts_box.add(&new_account_button);
-                    accounts.add_account(username.to_string(), public_key_bytes, private_key_bytes, address.to_string());
+
+                    let bech32 = does_pubkey_match_address(&public_key_bytes, &address);
+
+                    accounts.add_account(username.to_string(), public_key_bytes, private_key_bytes, bech32);
                     main_window.show_all();
                 }
             }
@@ -797,22 +806,25 @@ fn set_send_transaction_button(builder: &Builder, node: Arc<Mutex<TcpStream>>, a
     let spin_button_fee: SpinButton = builder.get_object(FEE_SPIN_BUTTON).ok_or(InterfaceError::MissingSpinButton)?;
 
     send_transaction_button.connect_clicked( move |_| {
+        println!("\n\n\nHOLAAAAAAA\n\n\n");
         let target_list = get_target_list(&transaction_box);
 
         if let Ok(locked_accounts) = accounts.lock(){
-            if let Some(user_info) = locked_accounts.get_actual_account(){
+            if let Some(user_info) = locked_accounts.get_current_account_info(){
                 let private_key = user_info.get_private_key();
                 let fee = spin_button_fee.get_value() * 100000000.0;
 
                 match create_transaction(target_list, user_info.get_utxo(), private_key, fee as i64, user_info.get_bech32()){
                     Ok(transaction) => {
                         if let Ok(mut locked_node) = node.lock() {
-                            let broadcast_txn = BroadcastTxn::new(transaction);
+                            println!("Connection established to broadcast transaction:\n{:?}", transaction);
+                            let broadcast_txn = BroadcastTxn::new(transaction.clone());
+                            println!("Message: {:?}", broadcast_txn);
 
-                            println!("se crea bien el broadcast txn broadcast_txn");
+                            println!("\n\n\n{:?}\n\n\n", encode_hex(&transaction.as_bytes(true)).unwrap());
 
-                            if locked_node.write_all(&broadcast_txn.as_bytes()).is_err(){
-                                println!("falla en envianr el broadcast_txn");
+                            if locked_node.write_all(&broadcast_txn.as_bytes(user_info.get_bech32())).is_err(){
+                                println!("Error when broadcasting new transaction to node.");
                                 return;
                             }
 
@@ -826,7 +838,7 @@ fn set_send_transaction_button(builder: &Builder, node: Arc<Mutex<TcpStream>>, a
                         } */
                     }},
                     Err(TransactionCreateError::InsufficientFounds) => {
-                        println!("fondos insuficientes");
+                        println!("Insufficient balance in account.");
                     },
                     _ => {}
                 }

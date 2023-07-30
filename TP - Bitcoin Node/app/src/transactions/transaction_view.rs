@@ -124,7 +124,6 @@ fn update_tx_send(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, 
         let mut txn = tx.get_tx().get_id(false);
         txn.reverse();
         
-        // acá hay que hacer un if sent txn: y después lo mismo pero con if receive txn
         store.insert_with_values(None, &[0,1,2,3,4], &[
             &state,
             &tx.get_date(),
@@ -161,7 +160,6 @@ fn update_tx_recv(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, 
         let mut txn = tx.get_tx().get_id(false);
         txn.reverse();
         
-        // acá hay que hacer un if sent txn: y después lo mismo pero con if receive txn
         store.insert_with_values(None, &[0,1,2,3,4], &[
             &state,
             &tx.get_date(),
@@ -195,9 +193,9 @@ pub fn update_transactions(store: ListStore, accounts: Arc<Mutex<Accounts>>) -> 
     let locked_accounts = accounts.lock().map_err(|_| InterfaceError::LockAccounts)?;
     store.clear();
 
-    let actual_account = locked_accounts.get_actual_account().ok_or(InterfaceError::LockAccounts)?;
+    let actual_account = locked_accounts.get_current_account_info().ok_or(InterfaceError::LockAccounts)?;
     let pub_key = actual_account.get_public_key();
-    let pk_script = pk_script_from_pubkey(&pub_key, false);
+    let pk_script = pk_script_from_pubkey(&pub_key, actual_account.get_bech32());
 
     update_tx_send(actual_account.get_confirmed_txs_send(), &store, CONFIRMED, SENT, &pk_script)?;
     update_tx_recv(actual_account.get_confirmed_txs_recv(), &store, CONFIRMED, RECEIVED, &pk_script)?;
@@ -233,7 +231,7 @@ fn update_balance_labels(available: &Label, pending: &Label, total: &Label, acco
     let mut available_value = 0.0;
     let mut pending_value = 0.0;
 
-    if let Some(user) = locked_accounts.get_actual_account() {
+    if let Some(user) = locked_accounts.get_current_account_info() {
         let pk_script = user.get_pk_script();
         available_value = get_balance(user.get_confirmed_txs_recv(), user.get_confirmed_txs_send(), &pk_script);
         pending_value = get_balance(user.get_unconfirmed_txs_recv(), user.get_unconfirmed_txs_send(), &pk_script);
@@ -284,10 +282,10 @@ pub fn update_transaction_list(builder: &Builder, store: ListStore, accounts: Ar
                     return Continue(false);
                 }
 
-                //acá no hay que dropear?
                 Continue(true)
             }
         ),
     );
+
     Ok(())
 }

@@ -9,13 +9,24 @@ use std::io::Read;
 /// Represents a transaction input (TxIn) in a transaction.
 #[derive(Debug, Clone)]
 pub struct TxIn {
-    previous_output: Outpoint,
-    script_bytes: CompactSizeUInt,
-    script: Vec<u8>,
-    sequence: u32,
+    pub previous_output: Outpoint,
+    pub script_bytes: CompactSizeUInt,
+    pub script: Vec<u8>,
+    pub sequence: u32,
 }
 
 impl TxIn {
+    pub fn new(prev_tx: Vec<u8>, prev_index: u32, script: Vec<u8>, sequence: u32) -> TxIn {
+        let outpoint = Outpoint::new(prev_tx, prev_index);
+
+        TxIn{
+            previous_output: outpoint,
+            script_bytes: CompactSizeUInt::from_number(script.len() as u64),
+            script,
+            sequence
+        }
+    }
+    
     /// Parses a byte stream and constructs a `TxIn` (transaction input) from it.
     ///
     /// # Arguments
@@ -59,17 +70,6 @@ impl TxIn {
     /// Returns a reference to the previous output being spent by this input.
     pub fn get_prev_output(&self) -> &Outpoint {
         &self.previous_output
-    }
-
-    pub fn new(prev_tx: Vec<u8>, prev_index: u32, script: Vec<u8>, sequence: u32) -> TxIn {
-        let outpoint = Outpoint::new(prev_tx, prev_index);
-
-        TxIn{
-            previous_output: outpoint,
-            script_bytes: CompactSizeUInt::from_number(script.len() as u64),
-            script,
-            sequence
-        }
     }
 
     pub fn set_signature(&mut self, signature: Vec<u8>) {

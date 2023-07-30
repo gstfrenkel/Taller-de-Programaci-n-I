@@ -2,7 +2,6 @@ use std::{net::TcpStream, io::Write, sync::{Arc, Mutex}};
 
 use crate::{
     wallet_utils::{
-        transactions::Transactions,
         get_transactions::GetTransactions,
         get_proof::GetProof,
         broadcast_txn::BroadcastTxn,
@@ -43,30 +42,29 @@ use super::update_wallet_error::UpdateWalletError;
 pub fn update_wallet(mut wallet: TcpStream, blockchain: Arc<Mutex<BlockChain>>, utxo: Arc<Mutex<UnspentTx>>, mempool: Arc<Mutex<Mempool>>, settings: Arc<Settings>, streams: Vec<Arc<Mutex<TcpStream>>>) -> Result<(), UpdateWalletError>{
     loop {
         let command_name = read_string_from_bytes(&mut wallet, 12).map_err(|_| UpdateWalletError::Read)?;
+
         match command_name.as_str() {
             "get_txs" => {
+                println!("Message Get Transactions received.\n");
+
                 let get_transactions = GetTransactions::from_bytes(command_name.to_string(), &mut wallet).map_err(|_| UpdateWalletError::Read)?;
-                println!("Lado nodo");
-                println!("Get Transactions");
-                println!("{:?}", get_transactions);
-                println!("Fin lado nodo");
-                let transactions: Transactions = get_wallet_txns(&blockchain, &utxo, &mempool, get_transactions).map_err(|_| UpdateWalletError::GetTxn)?;
-                println!("{:?}", transactions);
+                let transactions = get_wallet_txns(&blockchain, &utxo, &mempool, get_transactions).map_err(|_| UpdateWalletError::GetTxn)?;
+                
                 wallet.write_all(&transactions.as_bytes()).map_err(|_| UpdateWalletError::Write)?;
-                println!("anda el write");
             },
             "get_proof" => {
-                println!("Entra al match de get_proof");
+                println!("Message Get Proof received.\n");
                 let get_proof = GetProof::from_bytes(command_name.to_string(), &mut wallet).map_err(|_| UpdateWalletError::Read)?;
-                println!("Se recibe el get_proof: {:?}", get_proof);
                 send_proof(get_proof.get_block_header(), get_proof.get_tx_id(), &blockchain, &mut wallet).map_err(|_| UpdateWalletError::SendProof)?;
             },
             "broadcast_tx" => {
-                println!("Entra al match de broadcast_txn");
+                println!("Message Broadcast Tx received\n.");
+
                 let broadcast_txn = BroadcastTxn::from_bytes(command_name.to_string(), &mut wallet).map_err(|_| UpdateWalletError::Read)?;
-                println!("Se recibe el broadcast_txn: {:?}", broadcast_txn);
                 let tx_msg = Tx::new(settings.get_start_string(), broadcast_txn.get_txn());
+
                 println!("tx message paper {:?}", tx_msg);
+
                 broadcast_new_txn(tx_msg, &streams).map_err(|_| UpdateWalletError::BroadcastTx)?;
                 //update_mempool(&mempool, broadcast_txn.get_txn())?;
             },

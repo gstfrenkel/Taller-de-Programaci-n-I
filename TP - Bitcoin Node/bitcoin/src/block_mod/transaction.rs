@@ -11,21 +11,27 @@ use std::io::Read;
 /// Represents a Transaction in the Bitcoin protocol.
 #[derive(Debug, Clone)]
 pub struct Transaction {
-    version: i32,
-    flag: u8,
-    tx_in_count: CompactSizeUInt,
-    tx_in_list: Vec<TxIn>,
-    tx_out_count: CompactSizeUInt,
-    tx_out_list: Vec<TxOut>,
-    witness: Vec<Witness>,
-    lock_time: u32,
+    pub version: i32,
+    pub flag: u8,
+    pub tx_in_count: CompactSizeUInt,
+    pub tx_in_list: Vec<TxIn>,
+    pub tx_out_count: CompactSizeUInt,
+    pub tx_out_list: Vec<TxOut>,
+    pub witness: Vec<Witness>,
+    pub lock_time: u32,
 }
 
 impl Transaction {
-    pub fn new(version: i32, tx_in_list: Vec<TxIn>, tx_out_list: Vec<TxOut>, lock_time: u32) -> Self {
+    pub fn new(version: i32, tx_in_list: Vec<TxIn>, tx_out_list: Vec<TxOut>, lock_time: u32, segwit: bool) -> Self {
+        let mut flag = 0x00;
+
+        if segwit{
+            flag = 0x01;
+        }
+
         Transaction{
             version,
-            flag: 0x00,
+            flag,
             tx_in_count: CompactSizeUInt::from_number(tx_in_list.len() as u64),
             tx_in_list,
             tx_out_count: CompactSizeUInt::from_number(tx_out_list.len() as u64),
@@ -89,8 +95,6 @@ impl Transaction {
             lock_time,
         };
 
-        println!("{:?}", tx);
-
         Ok(tx)
 
 
@@ -110,14 +114,12 @@ impl Transaction {
     ///
     /// # Returns
     /// A vector of bytes representing the `Transaction` instance. 
-    
-    //[nVersion][marker][flag][txins][txouts][witness][nLockTime]
-    pub fn as_bytes(&self, wtxid: bool) -> Vec<u8> {
+    pub fn as_bytes(&self, segwit: bool) -> Vec<u8> {
         let mut buff = Vec::new();
 
         buff.extend(self.version.to_le_bytes());
 
-        if wtxid{
+        if segwit{
             buff.push(0x00);
             buff.push(self.flag);
         }
@@ -134,7 +136,7 @@ impl Transaction {
             buff.extend(&txout.as_bytes());
         }
 
-        if wtxid{
+        if segwit{
             for witness in self.witness.clone(){
                 buff.extend(witness.as_bytes());
             }
@@ -149,8 +151,8 @@ impl Transaction {
     ///
     /// # Returns
     /// A vector of bytes representing the transaction.
-    pub fn get_id(&self, wtxid: bool) -> Vec<u8> {
-        sha256d::Hash::hash(&self.as_bytes(wtxid))
+    pub fn get_id(&self, segwit: bool) -> Vec<u8> {
+        sha256d::Hash::hash(&self.as_bytes(segwit))
             .to_byte_array()
             .to_vec()
     }
@@ -210,17 +212,13 @@ impl Transaction {
     }
 
     pub fn p2wpkh_signature_hash(&self, index: usize, pk_script: Vec<u8>, amount_list: Vec<i64>) -> Vec<u8>{
-        let txins = self.tx_in_list.clone();
+        let txins = &self.get_tx_in_list();
 
         let mut signature = self.version.to_le_bytes().to_vec();
         let mut previous_outpoints = vec![];
         let mut previous_sequences = vec![];
 
-        for(i, txin) in txins.iter().enumerate(){
-            if i >= index{
-                break;
-            }
-
+        for txin in txins.iter(){
             previous_outpoints.extend(txin.get_prev_output().as_bytes());
             previous_sequences.extend(txin.get_sequence().to_le_bytes());
         }
@@ -228,27 +226,18 @@ impl Transaction {
         signature.extend(sha256d::Hash::hash(&previous_outpoints).to_byte_array());
         signature.extend(sha256d::Hash::hash(&previous_sequences).to_byte_array());
         signature.extend(txins[index].get_prev_output().as_bytes());
-        signature.extend(get_script_code(&pk_script));
-        signature.extend(amount_list[index].to_le_bytes());
-        signature.extend(txins[index].get_sequence().to_le_bytes());
+        signature.extend(get_script_code(&pk_script[2..]));
+        signature.extend(amount_list[index].to_le_bytes()); 
+        signature.extend([0xff, 0xff, 0xff, 0xff]);
 
         let mut outputs = vec![];
 
         for txout in self.get_tx_out_list().iter(){
-            outputs.extend(txout.get_value().to_le_bytes());
-
-            let pk_script_size = if is_pkscript_p2wpkh(&pk_script){
-                CompactSizeUInt::from_number(20)
-            } else{
-                CompactSizeUInt::from_number(pk_script.len().try_into().unwrap())
-            };
-
-            outputs.extend(pk_script_size.as_bytes());
-            outputs.extend(&pk_script);
+            outputs.extend(txout.as_bytes());
         }
 
         signature.extend(sha256d::Hash::hash(&outputs).to_byte_array());
-        signature.extend(0_u32.to_le_bytes());
+        signature.extend(self.lock_time.to_le_bytes());
         signature.extend(1_u32.to_le_bytes());
 
         sha256::Hash::hash(&signature).as_byte_array().to_vec()
@@ -267,18 +256,13 @@ impl Transaction {
     pub fn set_witness(&mut self, stack_items: Vec<Vec<u8>>){
         self.witness.push(Witness::new(stack_items));
     }
-
 }
 
-fn get_script_code(pk_script: &Vec<u8>) -> Vec<u8>{
+fn get_script_code(pubkey_hash: &[u8]) -> Vec<u8>{
     let mut buffer = vec![0x19, 0x76, 0xa9, 0x14];
-    buffer.extend(pk_script);
+    buffer.extend(pubkey_hash);
     buffer.extend(vec![0x88, 0xac]);
     buffer
-}
-
-fn is_pkscript_p2wpkh(pk_script: &Vec<u8>) -> bool{
-    pk_script.len() == 22 && pk_script.first() == Some(&0) && pk_script.get(1) == Some(&20)
 }
   
 impl std::fmt::Display for Transaction {

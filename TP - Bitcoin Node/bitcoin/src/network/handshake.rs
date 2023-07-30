@@ -72,6 +72,7 @@ fn is_version_compatible(version: &Version) -> bool {
 pub fn handshake(settings: &Settings) -> Result<Vec<TcpStream>, NetworkError> {
     println!("Node handshake has begun...");
     let ips: Vec<Ipv6Addr> = peer_discovery(settings.get_dns_seed())?;
+
     let mut streams: Vec<TcpStream> = Vec::new();
 
     for ip in ips {
@@ -93,11 +94,14 @@ pub fn handshake(settings: &Settings) -> Result<Vec<TcpStream>, NetworkError> {
         stream.write_all(&version.as_bytes())?;
 
         //Se recibe el version del peer
-        let header_version = MessageHeader::from_bytes(&mut stream)?;
+        let header_version = match MessageHeader::from_bytes(&mut stream){
+            Ok(header) => header,
+            Err(_) => continue
+        };
         
         let version_peer = match Version::from_bytes(header_version, &mut stream) {
             Ok(version) => version,
-            Err(_) => break,
+            Err(_) => continue,
         };
 
         

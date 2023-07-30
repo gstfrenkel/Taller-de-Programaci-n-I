@@ -8,8 +8,8 @@ use std::io::Read;
 /// An Outpoint is a structure that contains a reference to a TxOut used in the transaction
 #[derive(Debug, Clone)]
 pub struct Outpoint {
-    tx_id: Vec<u8>, //ID of the transaction that has the output for this transaction
-    index: u32,     //Index of the output (TxOut)
+    pub tx_id: Vec<u8>, //ID of the transaction that has the output for this transaction
+    pub index: u32,     //Index of the output (TxOut)
 }
 
 impl Outpoint {

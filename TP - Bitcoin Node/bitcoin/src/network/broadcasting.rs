@@ -202,7 +202,6 @@ pub fn handle_messages(
     mempool: &Arc<Mutex<Mempool>>
 ) -> Result<(), NetworkError> {
     let command_name: &str = header.get_command_name().as_str();
-    println!("Message received: {}", command_name);
 
     match command_name {
         PING_COMMAND => {
@@ -316,11 +315,17 @@ pub fn broadcast_new_txn(broadcast_tx_msg: Tx, streams: &Vec<Arc<Mutex<TcpStream
     println!("Entra a broadcasting.rs {:?}", broadcast_tx_msg);
 
     for stream in streams{
+        println!("\n\nEntra a stream\n\n");
+
         if let Ok(mut locked_stream) = stream.lock() {
             if locked_stream.write_all(&broadcast_tx_msg.as_bytes()).is_err(){
                 println!(" romaaaaaaaaaaaan {:?}", broadcast_tx_msg);
                 println!("Falla al escribir en un stream al broadcastear una transaccion");
+            } else{
+                println!("Se escribe bien a los streams :)");
             }
+            
+            drop(locked_stream);
         }
     }
 

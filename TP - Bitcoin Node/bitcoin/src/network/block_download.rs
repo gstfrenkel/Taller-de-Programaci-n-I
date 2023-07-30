@@ -29,6 +29,17 @@ use std::{
 };
 
 
+fn manage_block_download_error(shared_inventories: Arc<Mutex<Vec<Inventory>>>, invs: Vec<Inventory>){
+    let mut locked_inv = match shared_inventories.lock(){
+        Ok(locked_inv) => locked_inv,
+        Err(_) => return,
+    };
+
+    locked_inv.extend(invs);
+
+    drop(locked_inv);
+}
+
 /// Downloads blocks from a network using multiple TCP streams and filters them based on date and merkle tree validation.
 ///
 /// # Arguments
@@ -70,8 +81,6 @@ pub fn block_download(
     let shared_inventories = Arc::new(Mutex::new(inventories));
     let mut threads: Vec<JoinHandle<()>> = vec![];
 
-    println!("Fuera del loop");
-
     for stream in streams{
 
         let shared_stream = stream.clone();
@@ -85,10 +94,10 @@ pub fn block_download(
                 Err(_) => { return },
             };
 
-            loop{
+            'thread_loop: loop{
                 let mut locked_inv = match shared_inv.lock(){
                     Ok(locked_inv) => locked_inv,
-                    Err(_) => return,
+                    Err(_) => continue,
                 };
 
                 let mut get_data_size = 100;
@@ -104,7 +113,7 @@ pub fn block_download(
 
                 drop(locked_inv);
 
-                let get_data = GetData::new(shared_settings.get_start_string(), inv);
+                let get_data = GetData::new(shared_settings.get_start_string(), inv.clone());
 
                 locked_stream.write_all(&get_data.as_bytes()).unwrap();
 
@@ -112,7 +121,10 @@ pub fn block_download(
                     loop{
                         let header = match MessageHeader::from_bytes(&mut *locked_stream) {
                             Ok(header) => header,
-                            Err(_) => { return; }
+                            Err(_) => {
+                                manage_block_download_error(shared_inv, inv);
+                                break 'thread_loop;
+                            }
                         };
 
                         if header.get_command_name() == BLOCK_COMMAND{
@@ -124,7 +136,10 @@ pub fn block_download(
 
                     let block = match Block::from_bytes(&mut *locked_stream) {
                         Ok(block) => block,
-                        Err(_) => { return; }
+                        Err(_) => {
+                            manage_block_download_error(shared_inv, inv);
+                            break 'thread_loop;
+                        }
                     };
         
                     shared_tx.send(block).unwrap();

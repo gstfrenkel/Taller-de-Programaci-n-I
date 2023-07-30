@@ -17,8 +17,7 @@ use super::tx_filter_error::TxFilterError;
 /// A tuple containing two vectors of `WalletTx`: `confirmed_txs_send` and `confirmed_txs_recv`.
 /// `confirmed_txs_send` contains filtered transactions where the provided public key matches the signature script.
 /// `confirmed_txs_recv` contains filtered transactions where the provided public key script matches any of the transaction outputs.
-pub fn filter_confirmed_transactions(blockchain: &Arc<Mutex<BlockChain>>, pk_script: &Vec<u8>, public_key: Vec<u8>, last_update: u32) -> Result<(Vec<WalletTx>, Vec<WalletTx>),TxFilterError> {
-    println!("Entra al filter confirmed transaction");
+fn filter_confirmed_transactions(blockchain: &Arc<Mutex<BlockChain>>, pk_script: &Vec<u8>, public_key: Vec<u8>, last_update: u32) -> Result<(Vec<WalletTx>, Vec<WalletTx>),TxFilterError> {
     let mut confirmed_txs_send: Vec<WalletTx> = vec![];
     let mut confirmed_txs_recv: Vec<WalletTx> = vec![];
     let locked_blockchain = blockchain.lock().map_err(|_| TxFilterError::LockBlockchain)?;
@@ -67,8 +66,7 @@ pub fn filter_confirmed_transactions(blockchain: &Arc<Mutex<BlockChain>>, pk_scr
 /// A tuple containing two vectors of `WalletTx`: `unconfirmed_txs_send` and `unconfirmed_txs_recv`.
 /// `unconfirmed_txs_send` contains filtered transactions from the mempool where the provided public key matches the signature script.
 /// `unconfirmed_txs_recv` contains filtered transactions from the mempool where the provided public key script matches any of the transaction outputs.
-pub fn filter_unconfirmed_transactions(mempool: &Arc<Mutex<Mempool>>,pk_script: &Vec<u8>, public_key: Vec<u8>) -> Result<(Vec<WalletTx>, Vec<WalletTx>), TxFilterError> {
-    println!("Entra al filter unconfirmed WalletTx");
+fn filter_unconfirmed_transactions(mempool: &Arc<Mutex<Mempool>>,pk_script: &Vec<u8>, public_key: Vec<u8>) -> Result<(Vec<WalletTx>, Vec<WalletTx>), TxFilterError> {
     let mut unconfirmed_txs_send: Vec<WalletTx> = vec![];
     let mut unconfirmed_txs_recv: Vec<WalletTx> = vec![];
     let date = Local::now().naive_local().format("%Y-%m-%d").to_string();
@@ -105,8 +103,7 @@ pub fn filter_unconfirmed_transactions(mempool: &Arc<Mutex<Mempool>>,pk_script: 
 /// # Returns
 ///
 /// A vector of tuples `(Vec<u8>, u32, TxOut>)` representing the filtered UTXOs. Each tuple contains the transaction ID, output index, and the corresponding `TxOut`.
-pub fn filter_utxo(utxo_hash: &Arc<Mutex<UnspentTx>>, confirmed_txs: &[WalletTx], pk_script: &Vec<u8>) -> Result<Vec<(Vec<u8>, u32, TxOut)>, TxFilterError> {
-    println!("Entra al filter utxo transaction");
+fn filter_utxo(utxo_hash: &Arc<Mutex<UnspentTx>>, confirmed_txs: &[WalletTx], pk_script: &Vec<u8>) -> Result<Vec<(Vec<u8>, u32, TxOut)>, TxFilterError> {
     let mut utxo_txs: Vec<(Vec<u8>, u32, TxOut)> = vec![];
     let locked_utxo_hash = utxo_hash.lock().map_err(|_| TxFilterError::LockUtxo)?;
 
@@ -140,7 +137,6 @@ pub fn filter_utxo(utxo_hash: &Arc<Mutex<UnspentTx>>, confirmed_txs: &[WalletTx]
 ///
 /// A `Transactions` object containing the wallet transactions that match the specified criteria.
 pub fn get_wallet_txns(blockchain: &Arc<Mutex<BlockChain>>, utxo_hash: &Arc<Mutex<UnspentTx>>, mempool: &Arc<Mutex<Mempool>>, get_transactions: GetTransactions) -> Result<Transactions,TxFilterError>{
-    println!("Entra al get wallet txns");
     let pk_script = get_transactions.get_pk_script();
     let public_key = get_transactions.get_public_key();
     let mut last_update = get_transactions.get_last_update();

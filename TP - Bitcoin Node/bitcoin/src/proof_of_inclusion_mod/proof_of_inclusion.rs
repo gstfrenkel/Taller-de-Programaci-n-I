@@ -183,7 +183,7 @@ pub fn send_proof(mut block_hash: Vec<u8>, mut txn: Vec<u8>, blockchain: &Arc<Mu
 mod poi_test {
     use std::fs::OpenOptions;
 
-    use crate::{block_mod::block::Block, wallet_utils::merkle_block::MerkleBlock, messages::read_from_bytes::decode_hex};
+    use crate::{block_mod::block::Block, wallet_utils::merkle_block::MerkleBlock};
 
     use super::{calculate_merkle_root, txid_path, calculate_merkle_proof, compute_hash, Level};
 
@@ -296,12 +296,10 @@ mod poi_test {
         let txid = txids[1].clone();
 
         let mut i: usize = 0;
-        let mut tx_found: bool = false;
         let tx_count = txid.len();
 
         while i < tx_count {
             if &txid == &txids[i]{
-                tx_found = true;
                 break;
             }
             i += 1;

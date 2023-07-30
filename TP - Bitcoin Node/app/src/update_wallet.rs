@@ -28,29 +28,29 @@ pub fn update_wallet(accounts: Arc<Mutex<Accounts>>, node: Arc<Mutex<TcpStream>>
     loop {
         let mut locked_accounts = accounts.lock().map_err(|_| InterfaceError::LockAccounts)?;
 
-        if let Some(user_info) = locked_accounts.get_actual_account() {
-            println!("Lado wallet");
+        if let Some(user_info) = locked_accounts.get_current_account_info() {
             let mut locked_node = node.lock().map_err(|_| InterfaceError::LockNode)?;
-            let pk_script = pk_script_from_pubkey(&user_info.get_public_key(), false);
-            println!("{:?}", pk_script);
-            let get_transactions = GetTransactions::new(pk_script, user_info.get_public_key(), user_info.get_last_update());
-            println!("Se envia el {:?}", get_transactions);
+            let pk_script = pk_script_from_pubkey(&user_info.get_public_key(), user_info.get_bech32());
+            let get_transactions = GetTransactions::new(pk_script.clone(), user_info.get_public_key(), user_info.get_last_update());
+
             locked_node.write_all(&get_transactions.as_bytes()).map_err(|_| InterfaceError::Write)?;
+
             let _ = read_string_from_bytes(&mut *locked_node, 12).map_err(|_| InterfaceError::Read)?;
             let transactions = Transactions::from_bytes(&mut *locked_node).map_err(|_| InterfaceError::Read)?;
-            println!("{:?}", transactions);
+            
             drop(locked_node);
 
-            println!("Transactions");
-            println!("{:?}", transactions);
-            println!();
-            println!("Account");
-            println!("{:?}", locked_accounts);
-            println!("Fin lado wallet");
+            if !transactions.is_empty(){
+                println!("\n------------------------------------------------------------\n{}'s account with public key {:?}\n", locked_accounts.get_current_username(), &user_info.get_public_key());
+                println!("Get Transaction message sent with public key script: {:?}", pk_script);
+                println!("Transactions received:\n{:?}\n\n", transactions);
+            }
 
             locked_accounts.update(&transactions);
+            
             txs_sender.send(true).map_err(|_| InterfaceError::Send)?;
         }
+        
         drop(locked_accounts);
         thread::sleep(Duration::from_secs(5));
     }

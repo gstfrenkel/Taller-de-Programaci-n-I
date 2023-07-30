@@ -96,30 +96,26 @@ impl Transactions {
         let mut unconfirmed_txs_send: Vec<WalletTx> = vec![];
         let mut unconfirmed_txs_recv: Vec<WalletTx> = vec![];
         let mut utxo: Vec<(Vec<u8>, u32, TxOut)> = vec![];
-        println!("1");
+
         let confirmed_send_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..confirmed_send_count{
             confirmed_txs_send.push(WalletTx::from_bytes(stream)?);
         }
-        println!("2");
 
         let confirmed_recv_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..confirmed_recv_count{
             confirmed_txs_recv.push(WalletTx::from_bytes(stream)?);
         }
-        println!("3");
 
         let unconfirmed_send_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..unconfirmed_send_count{
             unconfirmed_txs_send.push(WalletTx::from_bytes(stream)?);
         }
-        println!("4");
 
         let unconfirmed_recv_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..unconfirmed_recv_count{
             unconfirmed_txs_recv.push(WalletTx::from_bytes(stream)?);
         }
-        println!("5");
         let utxo_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..utxo_count {
             let txid = read_vec_from_bytes(stream, 32)?;
@@ -128,7 +124,6 @@ impl Transactions {
 
             utxo.push((txid, index, txout));
         };
-        println!("6");
 
         let last_update_time = read_u32_from_bytes(stream, true)?;
 
@@ -141,6 +136,10 @@ impl Transactions {
             utxo,
             last_update_time
         })
+    }
+
+    pub fn is_empty(&self) -> bool{
+        self.confirmed_txs_recv.is_empty() && self.confirmed_txs_send.is_empty() && self.unconfirmed_txs_recv.is_empty() && self.unconfirmed_txs_send.is_empty()
     }
 
     pub fn get_confirmed_txs_send(&self) -> Vec<WalletTx> {

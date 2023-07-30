@@ -54,7 +54,7 @@ impl WalletTx {
     pub fn as_bytes(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
 
-        buffer.extend(&self.transaction.as_bytes(false));
+        buffer.extend(&self.transaction.as_bytes(self.transaction.is_segwit()));
         buffer.extend(self.date.as_bytes());
 
         buffer

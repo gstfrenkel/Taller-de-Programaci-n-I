@@ -6,8 +6,8 @@ use std::vec;
 
 #[derive(Debug, Clone)]
 pub struct Witness{
-    stack_item_count: CompactSizeUInt,
-    stack_items: Vec<Vec<u8>>,
+    pub stack_item_count: CompactSizeUInt,
+    pub stack_items: Vec<Vec<u8>>,
 }
 
 impl Witness {
