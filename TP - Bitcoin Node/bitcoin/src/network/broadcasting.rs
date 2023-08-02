@@ -173,10 +173,10 @@ fn manage_ping_command(
     stream: &mut TcpStream,
 ) -> Result<(), NetworkError> {
     let ping = Ping::from_bytes(header, stream).map_err(|_| NetworkError::Broadcasting)?;
-    println!("Se recibio un ping con nonce {}", ping.get_nonce());
+    println!("Message Ping received with nonce: {}", ping.get_nonce());
     let pong = Pong::new(settings.get_start_string(), ping.get_nonce());
     stream.write_all(&pong.as_bytes()).map_err(|_| NetworkError::Broadcasting)?;
-    println!("Se respondio con un pong con nonce {}\n", ping.get_nonce());
+    println!("Message Pong sent with nonce: {}\n", ping.get_nonce());
     Ok(())
 }
 
@@ -220,7 +220,6 @@ pub fn handle_messages(
             manage_block_command(stream, blockchain, utxo, mempool)?;
         }
         _ => {
-            println!("Este mensaje se descarta\n");
             stream.read_exact(&mut vec![0u8; header.get_payload_size() as usize]).map_err(|_| NetworkError::Broadcasting)?;
         }
     };
@@ -246,7 +245,7 @@ pub fn broadcasting(
     utxo: Arc<Mutex<UnspentTx>>,
     mempool: Arc<Mutex<Mempool>>
 ) -> Result<Vec<JoinHandle<()>>, NetworkError> {
-    println!("Se inicia el broadcasting\n");
+    println!("Broadcasting has begun.\n");
 
     let mut handles_broadcasting = vec![];
 
@@ -312,22 +311,26 @@ pub fn broadcasting(
 /// The function can return a NetworkError in the following case:
 /// * If there is an error while writing to a network stream.
 pub fn broadcast_new_txn(broadcast_tx_msg: Tx, streams: &Vec<Arc<Mutex<TcpStream>>>) -> Result<(), NetworkError>{
-    println!("Entra a broadcasting.rs {:?}", broadcast_tx_msg);
+    let tx = broadcast_tx_msg.as_bytes();
+    let mut count = 0;
+
+    println!("TX to be broadcasted:\n: {:?}\n\n", broadcast_tx_msg.transaction);
+    println!("Is TX segwit:\n: {:?}\n\n", broadcast_tx_msg.transaction.is_segwit());
+    println!("{:?}\n\n", broadcast_tx_msg.transaction.as_bytes(true));
+    println!("{:?}\n\n", broadcast_tx_msg.transaction.as_bytes(false));
 
     for stream in streams{
-        println!("\n\nEntra a stream\n\n");
-
         if let Ok(mut locked_stream) = stream.lock() {
-            if locked_stream.write_all(&broadcast_tx_msg.as_bytes()).is_err(){
-                println!(" romaaaaaaaaaaaan {:?}", broadcast_tx_msg);
-                println!("Falla al escribir en un stream al broadcastear una transaccion");
-            } else{
-                println!("Se escribe bien a los streams :)");
+            match locked_stream.write_all(&tx){
+                Ok(_) => {count += 1},
+                Err(error) => {println!("Error when attempting to broadcast created transaction: {}", error)}
             }
             
             drop(locked_stream);
         }
     }
+
+    println!("Succesfully broadcasted new transaction to {} nodes", count);
 
     Ok(())
 }

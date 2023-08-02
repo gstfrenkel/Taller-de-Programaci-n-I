@@ -73,4 +73,12 @@ impl Witness {
         
         true
     }
+
+    pub fn get_pubkey(&self) -> Vec<u8>{
+        if self.stack_item_count.value() < 2{
+            return vec![];
+        }
+
+        self.stack_items[1].clone()
+    }    
 }

@@ -7,7 +7,7 @@ use bitcoin_hashes::Hash;
 #[derive(Debug)]
 pub struct Tx {
     header: MessageHeader,
-    transaction: Transaction
+    pub transaction: Transaction
 }
 
 impl Tx {

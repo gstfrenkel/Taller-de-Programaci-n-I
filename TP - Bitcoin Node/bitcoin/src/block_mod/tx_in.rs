@@ -81,7 +81,7 @@ impl TxIn {
         self.sequence
     }
 
-    pub fn get_signature_script(&self) -> &Vec<u8> {
-        &self.script
+    pub fn get_signature_script(&self) -> Vec<u8> {
+        self.script.clone()
     }
 }

@@ -1,7 +1,23 @@
 use std::sync::{Arc, Mutex};
 use chrono::{NaiveDateTime, Local};
-use crate::{block_mod::{blockchain::BlockChain, utxo::UnspentTx, tx_out::TxOut, mempool::Mempool}, wallet_utils::{transactions::Transactions, get_transactions::GetTransactions, wallet_tx::WalletTx}};
+use crate::{block_mod::{blockchain::BlockChain, utxo::UnspentTx, tx_out::TxOut, mempool::Mempool, transaction::Transaction}, wallet_utils::{transactions::Transactions, get_transactions::GetTransactions, wallet_tx::WalletTx}, messages::read_from_bytes::{encode_hex, decode_hex}};
 use super::tx_filter_error::TxFilterError;
+
+fn aaaaaaaa(tx: &Transaction, pubkey: &[u8]) -> bool{
+    let txin = match tx.get_tx_in_list().get(0){
+        Some(txin) => txin,
+        None => return false,
+    };
+
+    let signature = txin.get_signature_script();
+    let witness_pubkey: Vec<u8> = tx.get_witness_pubkey(0);
+
+    if (signature.len() >= 33 && signature[(signature.len() - 33)..] == pubkey.to_vec()) || witness_pubkey == pubkey.to_vec(){
+        return true;
+    }
+
+    false
+}
 
 /// Filters confirmed transactions from the blockchain based on the provided criteria.
 ///
@@ -18,10 +34,11 @@ use super::tx_filter_error::TxFilterError;
 /// `confirmed_txs_send` contains filtered transactions where the provided public key matches the signature script.
 /// `confirmed_txs_recv` contains filtered transactions where the provided public key script matches any of the transaction outputs.
 fn filter_confirmed_transactions(blockchain: &Arc<Mutex<BlockChain>>, pk_script: &Vec<u8>, public_key: Vec<u8>, last_update: u32) -> Result<(Vec<WalletTx>, Vec<WalletTx>),TxFilterError> {
+    let locked_blockchain = blockchain.lock().map_err(|_| TxFilterError::LockBlockchain)?;
+    
+    let mut last_block_header = &locked_blockchain.get_last_block_header();
     let mut confirmed_txs_send: Vec<WalletTx> = vec![];
     let mut confirmed_txs_recv: Vec<WalletTx> = vec![];
-    let locked_blockchain = blockchain.lock().map_err(|_| TxFilterError::LockBlockchain)?;
-    let mut last_block_header = &locked_blockchain.get_last_block_header();
 
     while let Some(block) = locked_blockchain.get_block(last_block_header) {
         let datetime = NaiveDateTime::from_timestamp_opt(block.get_header().get_time() as i64, 0).ok_or(TxFilterError::DateTimeError)?;
@@ -32,17 +49,19 @@ fn filter_confirmed_transactions(blockchain: &Arc<Mutex<BlockChain>>, pk_script:
         }
 
         for transaction in block.get_txn_list() {
-            if let Some(first_txin) = transaction.get_tx_in_list().get(0) {
-                let signature = first_txin.get_signature_script();
+            let mut signatures = transaction.get_tx_in_list().iter().map(|tx_in| tx_in.get_signature_script());
+            let mut witnesses = transaction.get_witness().iter().map(|witness| witness.get_pubkey());
 
-                if signature.len() >= 33 && signature[(signature.len() - 33)..] == public_key{
-                    confirmed_txs_send.push(WalletTx::new(transaction.clone(), date.clone()));
-                    continue;
-                }
+            if signatures.any(|signature| signature.len() >= 33 && signature[(signature.len() - 33)..] == public_key) ||
+               witnesses.any(|witness| witness == public_key)
+            {
+                confirmed_txs_send.push(WalletTx::new(transaction.clone(), date.clone()));
+                continue;
             }
 
-            let tx_outs: Vec<Vec<u8>> = transaction.get_tx_out_list().iter().map(|tx_out| tx_out.get_pk_script()).collect();
-            if tx_outs.contains(pk_script) {
+            let pk_script_list: Vec<Vec<u8>> = transaction.get_tx_out_list().iter().map(|tx_out| tx_out.get_pk_script()).collect();
+
+            if pk_script_list.contains(pk_script) {
                 confirmed_txs_recv.push(WalletTx::new(transaction.clone(), date.clone()));
             }
         }
@@ -74,15 +93,19 @@ fn filter_unconfirmed_transactions(mempool: &Arc<Mutex<Mempool>>,pk_script: &Vec
     let locked_mempool = mempool.lock().map_err(|_| TxFilterError::LockMempool)?;
     
     for transaction in locked_mempool.get_txs().iter() {
-        if let Some(first_txin) = transaction.1.get_tx_in_list().get(0) {
-            let signature = first_txin.get_signature_script();
-            if signature.len() >= 33 && signature[(signature.len() - 33)..] == public_key{
-                unconfirmed_txs_send.push(WalletTx::new(transaction.1.clone(), date.clone()));
-                continue;
-            }
+        let mut signatures = transaction.1.get_tx_in_list().iter().map(|tx_in| tx_in.get_signature_script());
+        let mut witnesses = transaction.1.get_witness().iter().map(|witness| witness.get_pubkey());
+
+        if signatures.any(|signature| signature.len() >= 33 && signature[(signature.len() - 33)..] == public_key) ||
+            witnesses.any(|witness| witness == public_key)
+        {
+            unconfirmed_txs_send.push(WalletTx::new(transaction.1.clone(), date.clone()));
+            continue;
         }
-        let txouts: Vec<Vec<u8>> = transaction.1.get_tx_out_list().iter().map(|txout| txout.get_pk_script()).collect();
-        if txouts.contains(pk_script) {
+
+        let pk_script_list: Vec<Vec<u8>> = transaction.1.get_tx_out_list().iter().map(|tx_out| tx_out.get_pk_script()).collect();
+
+        if pk_script_list.contains(pk_script) {
             unconfirmed_txs_recv.push(WalletTx::new(transaction.1.clone(), date.clone()));
         }
     }

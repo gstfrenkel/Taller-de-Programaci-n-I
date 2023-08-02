@@ -95,6 +95,10 @@ impl Transaction {
             lock_time,
         };
 
+        if tx.get_tx_out_list()[0].get_pk_script() == [118, 169, 20, 0, 23, 63, 213, 181, 149, 65, 252, 153, 131, 149, 225, 229, 67, 36, 194, 221, 4, 116, 153, 136, 172].to_vec(){
+            println!("\nTx out encontrada:\n {:?}\n", tx);
+        }
+
         Ok(tx)
 
 
@@ -115,11 +119,9 @@ impl Transaction {
     /// # Returns
     /// A vector of bytes representing the `Transaction` instance. 
     pub fn as_bytes(&self, segwit: bool) -> Vec<u8> {
-        let mut buff = Vec::new();
+        let mut buff = self.version.to_le_bytes().to_vec();
 
-        buff.extend(self.version.to_le_bytes());
-
-        if segwit{
+        if segwit && self.is_segwit(){
             buff.push(0x00);
             buff.push(self.flag);
         }
@@ -136,7 +138,7 @@ impl Transaction {
             buff.extend(&txout.as_bytes());
         }
 
-        if segwit{
+        if segwit && self.is_segwit(){
             for witness in self.witness.clone(){
                 buff.extend(witness.as_bytes());
             }
@@ -175,6 +177,14 @@ impl Transaction {
         self.flag != 0
     }
 
+    pub fn get_witness_pubkey(&self, index: usize) -> Vec<u8>{
+        if self.witness.len() <= index{
+            return vec![];
+        }
+
+        self.witness[index].get_pubkey()
+    }
+
     /// Computes the signature hash for the transaction at the given input index with the provided public key script.
     /// The signature hash is used for generating a digital signature that verifies the integrity of the transaction.
     ///
@@ -186,29 +196,40 @@ impl Transaction {
     /// # Returns
     ///
     /// A vector of bytes representing the computed signature hash.
-    pub fn p2pkh_signature_hash(&self, index: usize, pk_script: &[u8]) -> Vec<u8> {
+    pub fn p2pkh_signature_hash(&mut self, index: usize, pk_script: &[u8]) -> Vec<u8> {
         let mut buffer = self.version.to_le_bytes().to_vec();
+        let mut aux_txin: TxIn;
+
         buffer.extend(self.tx_in_count.as_bytes());
 
         for (i, txin) in self.tx_in_list.iter().enumerate() {
             if i == index {
-                let aux_txin = TxIn::new(txin.get_prev_output().get_tx_id().clone(), txin.get_prev_output().get_index(), pk_script.to_vec(), txin.get_sequence());
-                buffer.extend(&aux_txin.as_bytes());
+                aux_txin = TxIn::new(txin.get_prev_output().get_tx_id().clone(), txin.get_prev_output().get_index(), pk_script.to_vec(), txin.get_sequence());
             } else {
-                let aux_txin = TxIn::new(txin.get_prev_output().get_tx_id().clone(), txin.get_prev_output().get_index(), vec![], txin.get_sequence());
-                buffer.extend(&aux_txin.as_bytes());
+                aux_txin = TxIn::new(txin.get_prev_output().get_tx_id().clone(), txin.get_prev_output().get_index(), vec![], txin.get_sequence());
             }
-        };
+            buffer.extend(&aux_txin.as_bytes());
+        }
+
         buffer.extend(self.tx_out_count.as_bytes());
 
         for txout in self.tx_out_list.iter() {
             buffer.extend(txout.as_bytes());
-        };
+        }
 
         buffer.extend(self.lock_time.to_le_bytes());
         buffer.extend((1_u32).to_le_bytes());
 
         sha256::Hash::hash(&buffer).as_byte_array().to_vec()
+
+        /*self.set_signature(index, pk_script.to_vec());
+        
+        let mut tx_bytes = self.as_bytes(false);
+        tx_bytes.extend(1_u32.to_le_bytes());
+
+        self.set_signature(index, vec![]);
+
+        sha256::Hash::hash(&tx_bytes).as_byte_array().to_vec()*/
     }
 
     pub fn p2wpkh_signature_hash(&self, index: usize, pk_script: Vec<u8>, amount_list: Vec<i64>) -> Vec<u8>{
@@ -312,7 +333,7 @@ mod block_test {
         } else {
             assert!(false);
         }
-
+        
         Ok(())
     }
 }

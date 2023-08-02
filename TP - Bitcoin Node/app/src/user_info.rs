@@ -90,11 +90,10 @@ impl UserInfo {
     ///
     /// * `new_tx_send` - A reference to a vector of `WalletTx` representing the new outgoing transactions.
     fn filter_utxo(&mut self, new_tx_send: &[WalletTx]) {
-        for tx in new_tx_send.iter(){
-            for txin in tx.get_tx().get_tx_in_list(){
+        for tx in new_tx_send.iter() {
+            for txin in tx.get_tx().get_tx_in_list() {
                 let prev_id = txin.get_prev_output().get_tx_id();
                 let prev_index = txin.get_prev_output().get_index();
-                println!("{:?}", self.utxo);
 
                 let mut aux = 0;
                 for i in 0..self.utxo.len() {

@@ -806,7 +806,6 @@ fn set_send_transaction_button(builder: &Builder, node: Arc<Mutex<TcpStream>>, a
     let spin_button_fee: SpinButton = builder.get_object(FEE_SPIN_BUTTON).ok_or(InterfaceError::MissingSpinButton)?;
 
     send_transaction_button.connect_clicked( move |_| {
-        println!("\n\n\nHOLAAAAAAA\n\n\n");
         let target_list = get_target_list(&transaction_box);
 
         if let Ok(locked_accounts) = accounts.lock(){
@@ -821,7 +820,7 @@ fn set_send_transaction_button(builder: &Builder, node: Arc<Mutex<TcpStream>>, a
                             let broadcast_txn = BroadcastTxn::new(transaction.clone());
                             println!("Message: {:?}", broadcast_txn);
 
-                            println!("\n\n\n{:?}\n\n\n", encode_hex(&transaction.as_bytes(true)).unwrap());
+                            println!("\n\n\n{:?}\n\n\n", encode_hex(&transaction.as_bytes(user_info.get_bech32())).unwrap());
 
                             if locked_node.write_all(&broadcast_txn.as_bytes(user_info.get_bech32())).is_err(){
                                 println!("Error when broadcasting new transaction to node.");

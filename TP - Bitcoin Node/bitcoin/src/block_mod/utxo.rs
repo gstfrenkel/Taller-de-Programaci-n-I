@@ -76,7 +76,7 @@ impl UnspentTx {
                     self.utxo.remove(tx_id);
                 }
             }
-            None => println!("Index {} not found.", index),
+            None => {},
         }
     }
 

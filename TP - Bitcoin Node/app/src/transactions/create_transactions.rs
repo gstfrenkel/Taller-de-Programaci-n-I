@@ -1,4 +1,4 @@
-use bitcoin::{block_mod::{script::Script, transaction::Transaction, tx_out::TxOut, tx_in::TxIn}, messages::read_from_bytes::encode_hex};
+use bitcoin::{block_mod::{script::Script, transaction::Transaction, tx_out::TxOut, tx_in::TxIn}};
 use bitcoin_hashes::{hash160, sha256, Hash, sha256d};
 use secp256k1::{SecretKey, Secp256k1, PublicKey, Message};
 use bech32::wit_prog::WitnessProgram;
@@ -50,7 +50,7 @@ pub fn address_from_pubkey(public_key: &[u8], p2wpkh: bool) -> Vec<u8>{
         return witness_program.to_address("tb".to_string()).unwrap().as_bytes().to_vec();
     }
 
-    let version_prefix = [0x6f]; //0x6f
+    let version_prefix = [0x6f];
     let double_hash = sha256d::Hash::hash(&[&version_prefix[..], &h160[..]].concat());    
     let checksum = &double_hash[..4];
     
@@ -88,41 +88,42 @@ pub fn pk_script_from_address(address: &Vec<u8>, p2wpkh: bool) -> Vec<u8>{
 }
 
 fn create_txout_list(targets: Vec<(Vec<u8>, i64)>, fee: i64) -> (Vec<TxOut>, i64){
-    let mut total_amount = fee;
     let mut txout_list = vec![];
+    let mut total_amount = 0;
 
-    for (address, amount) in targets {
+    for (address, amount) in targets {        
         let script = pk_script_from_address(&address, is_array_bech32(&address));
-        let txout = TxOut::new(amount, script/*.as_bytes()*/);
+
+        txout_list.push(TxOut::new(amount - fee, script));
         
         total_amount += amount;
-        txout_list.push(txout);
     }
+
     (txout_list, total_amount)
 }
 
 fn create_txin_list(mut utxo: Vec<(Vec<u8>, u32, TxOut)>, total_amount: i64) -> Result<(Vec<TxIn>, Vec<TxOutInfo>), TransactionCreateError> {
     let mut txin_list = vec![];
     let mut txout_info_list = vec![];
-    let mut acum_amount = 0;
+    let mut spent_amount = 0;
 
-    while acum_amount < total_amount {
+    while spent_amount < total_amount {
         if let Some(txout) = utxo.pop() {
             txin_list.push(TxIn::new(txout.0, txout.1, vec![], 0xffffffff));
 
             txout_info_list.push(TxOutInfo{
-               amount:  txout.2.get_value(),
-               p2wpkh: txout.2.is_p2wpkh(),
+                amount: txout.2.get_value(),
+                p2wpkh: txout.2.is_p2wpkh(),
             });
 
-            acum_amount += txout.2.get_value();
+            spent_amount += txout.2.get_value();
         } else {
             return Err(TransactionCreateError::InsufficientFounds);
         }
     }
 
     txout_info_list.push(TxOutInfo{
-        amount:  acum_amount - total_amount,
+        amount: spent_amount - total_amount,
         p2wpkh: false,
     });   //Change difference that must return to the sender
 
@@ -133,17 +134,17 @@ fn create_txin_list(mut utxo: Vec<(Vec<u8>, u32, TxOut)>, total_amount: i64) -> 
 
 fn sign_transaction(transaction: &mut Transaction, private_key: SecretKey, pk_script: &[u8], p2wpkh: bool, txout_info: &[TxOutInfo]){
     let secp = Secp256k1::new();
+    let pubkey = PublicKey::from_secret_key(&secp, &private_key).serialize().to_vec();
 
     for i in 0..transaction.get_tx_in_list().len(){
-        if p2wpkh && txout_info[i].p2wpkh(){
+        if p2wpkh /*&& txout_info[i].p2wpkh()*/{
             let signature_hash = transaction.p2wpkh_signature_hash(i, pk_script.to_vec(), txout_info_amounts(txout_info));
             let message = Message::from_hashed_data::<sha256::Hash>(&signature_hash); 
             let mut signature = secp.sign_ecdsa(&message, &private_key).serialize_der().to_vec();
 
             signature.push(0x01);
 
-            let pubkey = PublicKey::from_secret_key(&secp, &private_key).serialize().to_vec();
-            let script = vec![signature, pubkey];
+            let script = vec![signature, pubkey.clone()];
 
             transaction.set_witness(script);
         } else{
@@ -153,17 +154,17 @@ fn sign_transaction(transaction: &mut Transaction, private_key: SecretKey, pk_sc
 
             signature.push(0x01);
 
-            let script = vec![signature];
-            let signature_script = Script::new(Some(script));    
+            //let script = vec![signature];
+            let script = Script::new(Some(vec![signature, pubkey.clone()]));
 
-            transaction.set_signature(i, signature_script.as_bytes());
+            transaction.set_signature(i, script.as_bytes());
             transaction.set_witness(vec![]);
         }
     }
 }
 
 
-pub fn create_transaction(targets: Vec<(Vec<u8>, i64)>, utxo: Vec<(Vec<u8>, u32, TxOut)>, private_key: &[u8], fee: i64, p2wpkh: bool) -> Result<Transaction, TransactionCreateError> {
+pub fn create_transaction(targets: Vec<(Vec<u8>, i64)>, utxo: Vec<(Vec<u8>, u32, TxOut)>, private_key: &[u8], fee: i64, p2wpkh: bool) -> Result<Transaction, TransactionCreateError> {    
     let secp = Secp256k1::new();
 
     let private_key = SecretKey::from_slice(private_key).map_err(|_| TransactionCreateError::PrivateKey)?;
@@ -184,6 +185,8 @@ pub fn create_transaction(targets: Vec<(Vec<u8>, i64)>, utxo: Vec<(Vec<u8>, u32,
 
     sign_transaction(&mut transaction, private_key, &pk_script, p2wpkh, &txout_info_list);
 
+    println!("\n\nTX CREADA:\n{:?}\n\n", transaction);
+
     Ok(transaction)
 }
 
@@ -191,13 +194,13 @@ pub fn create_transaction(targets: Vec<(Vec<u8>, i64)>, utxo: Vec<(Vec<u8>, u32,
 mod create_transactions_test {
     use std::{str::FromStr, io::Cursor};
 
-    use bitcoin::{messages::{read_from_bytes::{decode_hex, encode_hex}, compact_size::CompactSizeUInt}, block_mod::{tx_in::TxIn, tx_out::TxOut, script::Script, transaction::Transaction, outpoint::Outpoint, witness::Witness}};
+    use bitcoin::{messages::{read_from_bytes::{decode_hex, encode_hex}, compact_size::CompactSizeUInt}, block_mod::{tx_in::TxIn, tx_out::TxOut, script::Script, transaction::Transaction}};
     use bitcoin_hashes::*;
     use secp256k1::{Secp256k1, Message, SecretKey, PublicKey};
 
-    use crate::transactions::{create_transactions::{decode_base58, is_string_bech32, address_from_pubkey, is_array_bech32, sign_transaction, TxOutInfo}, create_transaction_error::TransactionCreateError};
+    use crate::transactions::{create_transactions::{decode_base58, is_string_bech32, address_from_pubkey, is_array_bech32, sign_transaction, TxOutInfo, pk_script_from_pubkey}, create_transaction_error::TransactionCreateError};
 
-    use super::{pk_script_from_address, pk_script_from_pubkey};
+    use super::{pk_script_from_address};
 
     #[test]
     pub fn create_transaction() -> Result<(), TransactionCreateError>{
@@ -343,6 +346,10 @@ mod create_transactions_test {
 
         println!("{:?}", encode_hex(&tx.as_bytes(false))?);
 
+        assert_eq!("0100000001f504851ef89deade58a49e7165449aeae0bc71ee960d911b908c816b38a56434000000006a47304402204f191223988c6121ba7d0d6657db265d308140ac00282caed4336017d25c232002201ffff97e6b44a99b462b84bf831f3f15a67b2f05f6a18fb106cd4bd79974bb4701210362599b444272856b51e7ee10a4b70a683a9965ad3859e4d75e9b9ec136f84144ffffffff02905f0100000000001976a91468e5bfff52953b4179bf03c990d8ac81aa65173e88ac50340300000000001976a914f64fd1289550f634e20bf2ac6e95fb5d5fdbd50d88ac00000000", "0100000001f504851ef89deade58a49e7165449aeae0bc71ee960d911b908c816b38a56434000000006a47304402204f191223988c6121ba7d0d6657db265d308140ac00282caed4336017d25c232002201ffff97e6b44a99b462b84bf831f3f15a67b2f05f6a18fb106cd4bd79974bb4701210362599b444272856b51e7ee10a4b70a683a9965ad3859e4d75e9b9ec136f84144ffffffff02905f0100000000001976a91468e5bfff52953b4179bf03c990d8ac81aa65173e88ac50340300000000001976a914f64fd1289550f634e20bf2ac6e95fb5d5fdbd50d88ac00000000");
+        
+        
+
         Ok(())
     }
 
@@ -414,87 +421,8 @@ mod create_transactions_test {
         Ok(())
     }
 
-
-    
     #[test]
-    pub fn test() -> Result<(), TransactionCreateError> {
-        let user_address = b"tb1qduptdvlnxnhl48hz5qqwtf4ddy8fv25n2v0wvz".to_vec();
-        let user_pk_script = pk_script_from_address(&user_address, is_array_bech32(&user_address));
-        let user_private_key = "E37F9023E7DF31E3380B78AD1B230AC428A356CD1E1D6CEAD8FB4F4724553284";
-
-        let target = b"tb1q79gkmhfaw9szkn8fmg22llkx2sfhlx7ykptww6".to_vec();
-
-
-        //----------------------------------------------------------
-
-        let txin = TxIn::new([9, 228, 193, 215, 22, 38, 43, 223, 185, 218, 61, 229, 137, 60, 65, 160, 161, 176, 25, 42, 35, 6, 156, 226, 232, 108, 38, 108, 17, 125, 150, 240].to_vec(), 1, vec![], 0xffffffff);
-
-        let target_txout = TxOut::new(100000, pk_script_from_address(&target, is_array_bech32(&target)));
-        let change_txout = TxOut::new(1041697, user_pk_script.clone());
-        let amount_list  = vec![1241697];
-
-        let mut tx = Transaction::new(1, vec![txin], vec![target_txout, change_txout], 0, true);
-
-        //---------------------------------------------------------- 0.001 de fee y de transfer
-
-        //let signature = sign_transaction(transaction, private_key, &user_pk_script, true, &amount_list);
-
-        let signature = tx.p2wpkh_signature_hash(0, user_pk_script.clone(), amount_list);
-
-        println!("{:?}", encode_hex(&signature)?);
-        println!("{:?}", encode_hex(&user_pk_script)?);
-
-
-
-
-/*
-        // calculo el cambio
-        let change_amount = 0.0009 * 100000000.0;
-        let change_h160 = decode_base58(&address);
-        let change_script = Script::new(Some(vec![vec![0x76], vec![0xa9], change_h160, vec![0x88], vec![0xac]]));
-        let change_txout = TxOut::new(change_amount as i64, change_script.as_bytes());
-
-
-        let target_amount = 0.0021 * 100000000.0;
-        let target_h160 = decode_base58(&target);
-        let target_script = Script::new(Some(vec![vec![0x76], vec![0xa9], target_h160, vec![0x88], vec![0xac]]));
-        let target_txout = TxOut::new(target_amount as i64, target_script.as_bytes());
-
-        let mut tx = Transaction::new(1, vec![txin], vec![change_txout, target_txout], 0, false);
-
-        let secp = Secp256k1::new();
-
-        let signature_hash = tx.p2pkh_signature_hash(0, &change_script.as_bytes());
-
-        let private_key = SecretKey::from_str(private_key)?;
-
-        let message = Message::from_hashed_data::<sha256::Hash>(&signature_hash);
-
-        let der = secp.sign_ecdsa(&message, &private_key).serialize_der().to_vec();
-
-        let sig = vec![der, vec![1_u8]].concat();
-        println!("len sig {}", sig.len());
-
-        let sec = PublicKey::from_secret_key(&secp, &private_key).serialize().to_vec();
-
-        println!("len sec {}", sec.len());
-
-        let signature_script = Script::new(Some(vec![sig, sec]));
-
-        tx.set_signature(0, signature_script.as_bytes());
-
-        println!("len script {}", signature_script.as_bytes().len());
-
-        println!("{:?}", encode_hex(&tx.as_bytes(false))?);*/
-
-        Ok(())
-    }
-
-
-
-
-    #[test]
-    pub fn awdasdawdasd() -> Result<(), TransactionCreateError>{
+    pub fn test_p2wpkh_tx() -> Result<(), TransactionCreateError>{
         let tx_hex = decode_hex("0100000002fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac11000000")?;
         let tx_hex_final = decode_hex("01000000000102fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f00000000494830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac000247304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee0121025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee635711000000")?;
         
@@ -514,6 +442,19 @@ mod create_transactions_test {
         assert_eq!(final_tx.get_witness()[1].stack_items[0], tx.get_witness()[1].stack_items[0]);
         assert_eq!(final_tx.get_witness()[1].stack_items[1], tx.get_witness()[1].stack_items[1]);
 
+        println!("{:?}", encode_hex(&[118, 169, 20, 0, 23, 63, 213, 181, 149, 65, 252, 153, 131, 149, 225, 229, 67, 36, 194, 221, 4, 116, 153, 136, 172])?);
+
         Ok(())
     }
+
+    #[test]
+    pub fn asdadwdasd() -> Result<(), TransactionCreateError>{
+        let signature = decode_hex("47304402207b1d3a2bb69c3ee658211ed0d38136856f46b8aff22f3e6b7ea33af31c090054022030786868dd7ecd9e9800a66be62cd7666887d57b08ccbd39443e5d0b39a158a201")?;
+
+        println!("{:?}", signature[(signature.len() - 33)..].to_vec());
+        println!("{:?}", pk_script_from_pubkey(&decode_hex("03546112CD7BF229C36F6B1A3561D597A64FE8C36476310B7D679502484C6D3FDC")?, false));
+        println!("{:?}", pk_script_from_pubkey(&decode_hex("031BAEBE5BEFD2027C3FCBCD2FCF29EE184032992D765968647FBFC86A9F747D66")?, false));
+
+        Ok(())
+    }    
 }
