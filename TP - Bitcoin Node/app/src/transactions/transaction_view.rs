@@ -1,7 +1,7 @@
 use std::{sync::{Mutex, Arc}};
 use gtk::{Builder, prelude::BuilderExtManual, Label, LabelExt};
 
-use bitcoin::{block_mod::transaction::Transaction, messages::read_from_bytes::encode_hex, wallet_utils::wallet_tx::WalletTx};
+use bitcoin::{block_mod::{transaction::Transaction, tx_out::TxOut}, messages::read_from_bytes::encode_hex, wallet_utils::wallet_tx::WalletTx};
 
 use glib::{Receiver, clone, Continue};
 use gtk::{ListStore, prelude::GtkListStoreExtManual, GtkListStoreExt};
@@ -69,34 +69,24 @@ pub fn send_balance(transaction: &Transaction, pk_script: &[u8]) -> f64 {
 }
 
 
-/// Calculates the balance of a specific account.
-///
-/// This function takes two vectors of received and sent transactions, along with the public key script
-/// of the account. It iterates over the received transactions and adds up the received balances using the
-/// `received_balance` function. It then iterates over the sent transactions and subtracts the sent balances
-/// using the `send_balance` function. The resulting balance is returned as a floating-point value.
-///
-/// # Arguments
-///
-/// * `recv_transactions` - The vector of received transactions.
-/// * `send_transactions` - The vector of sent transactions.
-/// * `pk_script` - The public key script of the account.
-///
-/// # Returns
-///
-/// Returns the balance of the account as a floating-point value.
-fn get_balance(recv_transactions: &Vec<WalletTx>, send_transactions: &Vec<WalletTx>, pk_script: &Vec<u8>) -> f64{
+fn available_funds(utxo: Vec<(Vec<u8>, u32, TxOut)>) -> f64{
+    let mut value = 0;
+
+    for txout in utxo{
+        value += txout.2.get_value();
+    }
+
+    value as f64 / BTC_TO_SATOSHI
+}
+
+fn pending_funds(sent_amounts: Vec<i64>) -> f64{
     let mut value = 0.0;
 
-    for transaction in recv_transactions {
-        value += received_balance(transaction.get_tx(), pk_script);
+    for amount in sent_amounts{
+        value += amount as f64;
     }
 
-    for transaction in send_transactions {
-        value -= send_balance(transaction.get_tx(), pk_script);
-    }
-
-    value
+    value / BTC_TO_SATOSHI
 }
 
 /// Updates the transaction list view for sent transactions.
@@ -232,9 +222,10 @@ fn update_balance_labels(available: &Label, pending: &Label, total: &Label, acco
     let mut pending_value = 0.0;
 
     if let Some(user) = locked_accounts.get_current_account_info() {
-        let pk_script = user.get_pk_script();
-        available_value = get_balance(user.get_confirmed_txs_recv(), user.get_confirmed_txs_send(), &pk_script);
-        pending_value = get_balance(user.get_unconfirmed_txs_recv(), user.get_unconfirmed_txs_send(), &pk_script);
+        //available_value = get_balance(user.get_confirmed_txs_recv(), user.get_confirmed_txs_send(), &pk_script);
+        available_value = available_funds(user.get_utxo());
+        //pending_value = get_balance(user.get_unconfirmed_txs_recv(), user.get_unconfirmed_txs_send(), &pk_script);
+        pending_value = pending_funds(user.get_set_amounts());
     }
 
     available.set_text(&format!("{} BTC", available_value));

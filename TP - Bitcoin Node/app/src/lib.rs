@@ -6,3 +6,4 @@ pub mod accounts;
 pub mod transactions;
 pub mod user_info;
 pub mod update_wallet;
+pub mod bech32;

@@ -151,6 +151,8 @@ pub fn headers_download(
     println!("Se inicia la descarga de headers");
     let mut stream = streams.pop().ok_or(NetworkError::HeaderDownload)?;
 
+    println!("Acá llega");
+
     // Open the file in read-write mode
     let mut file = OpenOptions::new()
         .create(true)

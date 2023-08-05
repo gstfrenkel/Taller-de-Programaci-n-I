@@ -3,7 +3,7 @@ use crate::block_mod::tx_out::TxOut;
 use crate::block_mod::witness::Witness;
 use crate::messages::compact_size::CompactSizeUInt;
 use crate::messages::message_error::MessageError;
-use crate::messages::read_from_bytes::{read_i32_from_bytes, read_u32_from_bytes, read_u8_from_bytes};
+use crate::messages::read_from_bytes::{read_i32_from_bytes, read_u32_from_bytes, read_u8_from_bytes, encode_hex};
 use crate::proof_of_inclusion_mod::proof_of_inclusion::compute_hash;
 use bitcoin_hashes::sha256d;
 use bitcoin_hashes::Hash;
@@ -122,8 +122,12 @@ impl Coinbase {
     }    
     
     pub fn is_commitment_valid(&self, witness_root_hash: Vec<u8>) -> bool{
-        let witness_reserved_value = self.tx_in_list[0].script();
-        let commitment_hash = compute_hash(witness_root_hash, witness_reserved_value);
+        println!("Coinbase: {:?}", self);
+
+
+        //let witness_reserved_value = self.tx_in_list[0].script();
+        let witness_reserved_value = &self.get_witness()[0].stack_items[0];
+        let commitment_hash = compute_hash(witness_root_hash.clone(), witness_reserved_value.to_vec());
 
         for tx_out in &self.tx_out_list{
             let pk_script = tx_out.get_pk_script();
@@ -137,7 +141,22 @@ impl Coinbase {
             }
         }
 
+        println!("Witness Root Hash:\n{:?}\n", witness_root_hash);
+        println!("Commitment Hash:\n{:?}\n\n", encode_hex(&commitment_hash).unwrap());
+
+        /*let witness_reserved_value = &self.get_witness()[0].stack_items[0];
+        let commitment_hash = compute_hash(witness_root_hash.clone(), witness_reserved_value.to_vec());
+
+        println!("Witness Root Hash:\n{:?}\n", witness_root_hash);
+        println!("Commitment Hash:\n{:?}\n\n", encode_hex(&commitment_hash).unwrap());*/
+
+        println!("ScriptPubKey: {:?}", encode_hex(&self.tx_out_list[0].get_pk_script()[6..38]).unwrap());
+
         false
+    }
+
+    pub fn get_witness(&self) -> Vec<Witness>{
+        self.witness.clone()
     }
 
     pub fn has_witnesses(&self) -> bool{
@@ -210,3 +229,4 @@ impl std::fmt::Display for Coinbase {
         Ok(())
     }
 }
+

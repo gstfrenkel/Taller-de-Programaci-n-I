@@ -13,7 +13,10 @@ pub fn download_blocks(blockchain: Arc<Mutex<BlockChain>>, utxo: Arc<Mutex<Unspe
                     if locked_blockchain.cant_blocks() % 1000 == 0{
                         println!("Blocks downloadad so far: {}...", locked_blockchain.cant_blocks());
                     }
+
+                    drop(locked_blockchain);
                 }
+                drop(locked_utxo);
             }
         }
     })

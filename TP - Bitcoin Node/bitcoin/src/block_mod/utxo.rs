@@ -70,14 +70,18 @@ impl UnspentTx {
             }
         };
 
-        match transaction_outputs.remove(&index) {
+        if transaction_outputs.remove(&index).is_some() && transaction_outputs.values().len() == 0 {
+            self.utxo.remove(tx_id);
+        }
+
+        /*match transaction_outputs.remove(&index) {
             Some(_) => {
                 if transaction_outputs.values().len() == 0 {
                     self.utxo.remove(tx_id);
                 }
             }
             None => {},
-        }
+        }*/
     }
 
     /// Adds a transaction output to the `UnspentTx` object.
@@ -121,8 +125,6 @@ impl UnspentTx {
     pub fn get_utxo(&self) -> &HashMap<Vec<u8>, HashMap<u32, TxOut>> {
         &self.utxo
     }
-
-
 }
 
 impl Default for UnspentTx {

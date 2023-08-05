@@ -95,10 +95,6 @@ impl Transaction {
             lock_time,
         };
 
-        if tx.get_tx_out_list()[0].get_pk_script() == [118, 169, 20, 0, 23, 63, 213, 181, 149, 65, 252, 153, 131, 149, 225, 229, 67, 36, 194, 221, 4, 116, 153, 136, 172].to_vec(){
-            println!("\nTx out encontrada:\n {:?}\n", tx);
-        }
-
         Ok(tx)
 
 
@@ -221,16 +217,8 @@ impl Transaction {
         buffer.extend((1_u32).to_le_bytes());
 
         sha256::Hash::hash(&buffer).as_byte_array().to_vec()
-
-        /*self.set_signature(index, pk_script.to_vec());
-        
-        let mut tx_bytes = self.as_bytes(false);
-        tx_bytes.extend(1_u32.to_le_bytes());
-
-        self.set_signature(index, vec![]);
-
-        sha256::Hash::hash(&tx_bytes).as_byte_array().to_vec()*/
     }
+
 
     pub fn p2wpkh_signature_hash(&self, index: usize, pk_script: Vec<u8>, amount_list: Vec<i64>) -> Vec<u8>{
         let txins = &self.get_tx_in_list();

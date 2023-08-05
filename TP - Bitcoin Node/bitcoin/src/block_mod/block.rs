@@ -6,6 +6,7 @@ use crate::block_mod::block_header::BlockHeader;
 use crate::messages::compact_size::CompactSizeUInt;
 use crate::messages::message_error::MessageError;
 use std::io::Read;
+use std::process::exit;
 use std::vec;
 
 /// Represents a block in Bitcoin's blockchain.
@@ -52,8 +53,22 @@ impl Block {
 
         if !block.is_commitment_valid(){
             println!("Commitment validation has failed.");
+            for tx in block.get_txn_list(){
+                println!("{:?}\n", tx);
+            }
+            println!("No Anduvo\n");
+            exit(-1);
             return Err(MessageError::InvalidBlockCommitment);
-        }
+        }/*else{
+            for tx in block.get_txn_list(){
+
+                //println!("{:?}\n", tx);
+            }
+
+            println!("Anduvo");
+            exit(-1);
+        }*/
+        //println!("Anduvo\n");
 
         Ok(block)
     }
@@ -105,11 +120,14 @@ impl Block {
             return true;
         }
 
-        let mut buffer = vec![];
+        let mut buffer = vec![vec![0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]];
 
         for tx in self.get_txn_list(){
+            //buffer.push(tx.get_id(tx.is_segwit()));
             if tx.is_segwit(){
                 buffer.push(tx.get_id(true));
+            } else{
+                //println!("Hay casos sin witness");
             }
         }
 
@@ -197,6 +215,45 @@ mod block_test {
         let mut tx_ids = block.get_txn_ids();
 
         assert_eq!(calculate_merkle_root(&mut tx_ids), *block.get_merkle_root());
+
+        Ok(())
+    }
+}
+
+
+
+#[cfg(test)]
+mod awdasd {
+    use bitcoin_hashes::{sha256d, Hash};
+    use hex::decode;
+    use crate::block_mod::transaction::Transaction;
+    use crate::messages::message_error::MessageError;
+    use crate::messages::read_from_bytes::{decode_hex, encode_hex};
+
+    use super::calculate_merkle_root;
+
+    #[test]
+    fn adasdwd() -> Result<(), MessageError> {
+        let mut a = decode_hex("66beaceb4be99da1e9824448231ab4fd37bacaee912381e779b37cf0e1dadad7").unwrap();
+        let mut b = decode_hex("aecb37e25954e15489e25548eb663ffdfd8a1362cac757ad62e9614453d2a577").unwrap();
+        let mut c = decode_hex("5b211bc589cbdf5ad86cab1e2fe91f01c8ab934d21536b35864d30a3ff778456").unwrap();
+        let mut d = decode_hex("66beaceb4be99da1e9824448231ab4fd37bacaee912381e779b37cf0e1dadad7").unwrap();
+        a.reverse();
+        b.reverse();
+        c.reverse();
+        d.reverse();
+
+        let mut e = vec![a, b, c, d];
+        let d = calculate_merkle_root(&mut e);
+
+        println!("{:?}", encode_hex(&d).unwrap());
+
+        let f = sha256d::Hash::hash(&d)
+            .to_byte_array()
+            .to_vec();
+
+        println!("{:?}", encode_hex(&f).unwrap());
+
 
         Ok(())
     }

@@ -13,6 +13,7 @@ pub struct UserInfo {
     unconfirmed_txs_send: Vec<WalletTx>,
     unconfirmed_txs_recv: Vec<WalletTx>,
     utxo: Vec<(Vec<u8>, u32, TxOut)>,
+    sent_amounts: Vec<i64>,
     last_update_time: u32
 }
 
@@ -23,6 +24,7 @@ impl UserInfo {
             private_key,
             bech32,
             utxo: vec![],
+            sent_amounts: vec![],
             confirmed_txs_send: vec![],
             confirmed_txs_recv: vec![],
             unconfirmed_txs_send: vec![],
@@ -113,6 +115,7 @@ impl UserInfo {
         self.unconfirmed_txs_send = txs.get_unconfirmed_txs_send();
         self.unconfirmed_txs_recv = txs.get_unconfirmed_txs_recv();
         self.utxo.extend(txs.get_utxo());
+        self.sent_amounts = txs.get_sent_amounts();
         self.filter_utxo(&new_tx_send);
         self.last_update_time = txs.get_last_update();
     }
@@ -123,5 +126,9 @@ impl UserInfo {
 
     pub fn get_utxo(&self) -> Vec<(Vec<u8>, u32, TxOut)> {
         self.utxo.clone()
+    }
+
+    pub fn get_set_amounts(&self) -> Vec<i64>{
+        self.sent_amounts.clone()
     }
 }

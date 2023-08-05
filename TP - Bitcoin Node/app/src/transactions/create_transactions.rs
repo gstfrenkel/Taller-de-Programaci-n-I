@@ -1,37 +1,14 @@
 use bitcoin::{block_mod::{script::Script, transaction::Transaction, tx_out::TxOut, tx_in::TxIn}};
 use bitcoin_hashes::{hash160, sha256, Hash, sha256d};
 use secp256k1::{SecretKey, Secp256k1, PublicKey, Message};
-use bech32::wit_prog::WitnessProgram;
+//use bech32::wit_prog::WitnessProgram;
+
+use crate::bech32::witness_program::WitnessProgram;
 
 use super::create_transaction_error::TransactionCreateError;
 
-struct TxOutInfo{
-    p2wpkh: bool,
-    amount: i64,
-}
-
-impl TxOutInfo{
-    pub fn p2wpkh(&self) -> bool{
-        self.p2wpkh
-    }
-
-    pub fn amount(&self) -> i64{
-        self.amount
-    }
-}
-
-fn txout_info_amounts(txout_info_list: &[TxOutInfo]) -> Vec<i64>{
-    let mut buffer = vec![];
-
-    for txout_info in txout_info_list{
-        buffer.push(txout_info.amount());
-    }
-
-    buffer
-}
-
 pub fn is_string_bech32(address: String) -> bool{
-    WitnessProgram::from_address("tb".to_string(), address).is_ok()
+    WitnessProgram::from_address(/*"tb".to_string(),*/ address).is_ok()
 }
 
 fn is_array_bech32(address: &[u8]) -> bool{
@@ -47,7 +24,7 @@ pub fn address_from_pubkey(public_key: &[u8], p2wpkh: bool) -> Vec<u8>{
             program: h160.to_vec(),
         };
     
-        return witness_program.to_address("tb".to_string()).unwrap().as_bytes().to_vec();
+        return witness_program.to_address(/*"tb".to_string()*/).unwrap().as_bytes().to_vec();
     }
 
     let version_prefix = [0x6f];
@@ -77,8 +54,8 @@ pub fn pk_script_from_address(address: &Vec<u8>, p2wpkh: bool) -> Vec<u8>{
     if p2wpkh{
         let string_address = String::from_utf8_lossy(address).to_string(); 
 
-        if let Ok(witness_program) = WitnessProgram::from_address("tb".to_string(), string_address){
-            return witness_program.to_scriptpubkey();
+        if let Ok(witness_program) = WitnessProgram::from_address(/*"tb".to_string(),*/ string_address){
+            return witness_program./*to_scriptpubkey()*/to_pk_script();
         }
     }
 
@@ -89,12 +66,12 @@ pub fn pk_script_from_address(address: &Vec<u8>, p2wpkh: bool) -> Vec<u8>{
 
 fn create_txout_list(targets: Vec<(Vec<u8>, i64)>, fee: i64) -> (Vec<TxOut>, i64){
     let mut txout_list = vec![];
-    let mut total_amount = 0;
+    let mut total_amount = fee;
 
     for (address, amount) in targets {        
         let script = pk_script_from_address(&address, is_array_bech32(&address));
 
-        txout_list.push(TxOut::new(amount - fee, script));
+        txout_list.push(TxOut::new(amount, script));
         
         total_amount += amount;
     }
@@ -102,19 +79,16 @@ fn create_txout_list(targets: Vec<(Vec<u8>, i64)>, fee: i64) -> (Vec<TxOut>, i64
     (txout_list, total_amount)
 }
 
-fn create_txin_list(mut utxo: Vec<(Vec<u8>, u32, TxOut)>, total_amount: i64) -> Result<(Vec<TxIn>, Vec<TxOutInfo>), TransactionCreateError> {
+fn create_txin_list(mut utxo: Vec<(Vec<u8>, u32, TxOut)>, total_amount: i64) -> Result<(Vec<TxIn>, Vec<i64>), TransactionCreateError> {
     let mut txin_list = vec![];
-    let mut txout_info_list = vec![];
+    let mut amount_list = vec![];
     let mut spent_amount = 0;
 
     while spent_amount < total_amount {
         if let Some(txout) = utxo.pop() {
             txin_list.push(TxIn::new(txout.0, txout.1, vec![], 0xffffffff));
 
-            txout_info_list.push(TxOutInfo{
-                amount: txout.2.get_value(),
-                p2wpkh: txout.2.is_p2wpkh(),
-            });
+            amount_list.push(txout.2.get_value());
 
             spent_amount += txout.2.get_value();
         } else {
@@ -122,23 +96,20 @@ fn create_txin_list(mut utxo: Vec<(Vec<u8>, u32, TxOut)>, total_amount: i64) -> 
         }
     }
 
-    txout_info_list.push(TxOutInfo{
-        amount: spent_amount - total_amount,
-        p2wpkh: false,
-    });   //Change difference that must return to the sender
+    amount_list.push(spent_amount - total_amount);  //Change difference that must return to the sender's address
 
-    Ok((txin_list, txout_info_list))
+    Ok((txin_list, amount_list))
 }
 
 
 
-fn sign_transaction(transaction: &mut Transaction, private_key: SecretKey, pk_script: &[u8], p2wpkh: bool, txout_info: &[TxOutInfo]){
+fn sign_transaction(transaction: &mut Transaction, private_key: SecretKey, pk_script: &[u8], p2wpkh: bool, amount_list: &[i64]){
     let secp = Secp256k1::new();
     let pubkey = PublicKey::from_secret_key(&secp, &private_key).serialize().to_vec();
 
     for i in 0..transaction.get_tx_in_list().len(){
         if p2wpkh /*&& txout_info[i].p2wpkh()*/{
-            let signature_hash = transaction.p2wpkh_signature_hash(i, pk_script.to_vec(), txout_info_amounts(txout_info));
+            let signature_hash = transaction.p2wpkh_signature_hash(i, pk_script.to_vec(), amount_list.to_vec());
             let message = Message::from_hashed_data::<sha256::Hash>(&signature_hash); 
             let mut signature = secp.sign_ecdsa(&message, &private_key).serialize_der().to_vec();
 
@@ -172,18 +143,18 @@ pub fn create_transaction(targets: Vec<(Vec<u8>, i64)>, utxo: Vec<(Vec<u8>, u32,
     let pk_script = pk_script_from_pubkey(&public_key, p2wpkh);
 
     let (mut txout_list, total_amount) = create_txout_list(targets, fee);
-    let (txin_list, mut txout_info_list)= create_txin_list(utxo, total_amount)?;
+    let (txin_list, mut amount_list)= create_txin_list(utxo, total_amount)?;
 
-    if let Some(change) = txout_info_list.pop(){
-        if change.amount() > 0{
-            let txout_change = TxOut::new(change.amount(), pk_script.clone());
+    if let Some(change) = amount_list.pop(){
+        if change > 0{
+            let txout_change = TxOut::new(change, pk_script.clone());
             txout_list.push(txout_change);
         }
     }
 
     let mut transaction = Transaction::new(1, txin_list, txout_list, 0, p2wpkh);
 
-    sign_transaction(&mut transaction, private_key, &pk_script, p2wpkh, &txout_info_list);
+    sign_transaction(&mut transaction, private_key, &pk_script, p2wpkh, &amount_list);
 
     println!("\n\nTX CREADA:\n{:?}\n\n", transaction);
 
@@ -198,7 +169,7 @@ mod create_transactions_test {
     use bitcoin_hashes::*;
     use secp256k1::{Secp256k1, Message, SecretKey, PublicKey};
 
-    use crate::transactions::{create_transactions::{decode_base58, is_string_bech32, address_from_pubkey, is_array_bech32, sign_transaction, TxOutInfo, pk_script_from_pubkey}, create_transaction_error::TransactionCreateError};
+    use crate::transactions::{create_transactions::{decode_base58, is_string_bech32, address_from_pubkey, is_array_bech32, sign_transaction}, create_transaction_error::TransactionCreateError};
 
     use super::{pk_script_from_address};
 
@@ -407,21 +378,6 @@ mod create_transactions_test {
     }
 
     #[test]
-    pub fn create_bech32_address_from_pubkey() -> Result<(), TransactionCreateError>{
-        let pubkey1 = decode_hex("0279BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")?;
-        let pubkey2 = decode_hex("02EE474F9E2E5EF77EC5AFE82E890000C3DD3B6892115CE4D3E6288B66A2F33E0B")?;
-
-        let asjdajwjdajs = decode_hex("7cf317e9bfb0436d0a08d39c4161d9a9127d8a80")?;
-
-        println!("{:?}", String::from_utf8_lossy(&address_from_pubkey(&pubkey1, true)).to_string());
-        println!("{:?}", String::from_utf8_lossy(&address_from_pubkey(&pubkey2, true)).to_string());
-        
-        println!("{:?}", asjdajwjdajs);
-
-        Ok(())
-    }
-
-    #[test]
     pub fn test_p2wpkh_tx() -> Result<(), TransactionCreateError>{
         let tx_hex = decode_hex("0100000002fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f0000000000eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac11000000")?;
         let tx_hex_final = decode_hex("01000000000102fff7f7881a8099afa6940d42d1e7f6362bec38171ea3edf433541db4e4ad969f00000000494830450221008b9d1dc26ba6a9cb62127b02742fa9d754cd3bebf337f7a55d114c8e5cdd30be022040529b194ba3f9281a99f2b1c0a19c0489bc22ede944ccf4ecbab4cc618ef3ed01eeffffffef51e1b804cc89d182d279655c3aa89e815b1b309fe287d9b2b55d57b90ec68a0100000000ffffffff02202cb206000000001976a9148280b37df378db99f66f85c95a783a76ac7a6d5988ac9093510d000000001976a9143bde42dbee7e4dbe6a21b2d50ce2f0167faa815988ac000247304402203609e17b84f6a7d30c80bfa610b5b4542f32a8a0d5447a12fb1366d7f01cc44a0220573a954c4518331561406f90300e8f3358f51928d43c212a8caed02de67eebee0121025476c2e83188368da1ff3e292e7acafcdb3566bb0ad253f62fc70f07aeee635711000000")?;
@@ -432,9 +388,9 @@ mod create_transactions_test {
         let mut cursor = Cursor::new(tx_hex);
         let mut tx = Transaction::from_bytes(&mut cursor).unwrap();
 
-        let txout_info = vec![TxOutInfo{p2wpkh: false, amount: 625000000}, TxOutInfo{p2wpkh: true, amount: 600000000}];
+        let amount_list = vec![625000000, 600000000];
 
-        sign_transaction(&mut tx, private_key, &pk_script, true, &txout_info);
+        sign_transaction(&mut tx, private_key, &pk_script, true, &amount_list);
 
         cursor = Cursor::new(tx_hex_final);
         let final_tx = Transaction::from_bytes(&mut cursor).unwrap();
@@ -442,19 +398,6 @@ mod create_transactions_test {
         assert_eq!(final_tx.get_witness()[1].stack_items[0], tx.get_witness()[1].stack_items[0]);
         assert_eq!(final_tx.get_witness()[1].stack_items[1], tx.get_witness()[1].stack_items[1]);
 
-        println!("{:?}", encode_hex(&[118, 169, 20, 0, 23, 63, 213, 181, 149, 65, 252, 153, 131, 149, 225, 229, 67, 36, 194, 221, 4, 116, 153, 136, 172])?);
-
         Ok(())
     }
-
-    #[test]
-    pub fn asdadwdasd() -> Result<(), TransactionCreateError>{
-        let signature = decode_hex("47304402207b1d3a2bb69c3ee658211ed0d38136856f46b8aff22f3e6b7ea33af31c090054022030786868dd7ecd9e9800a66be62cd7666887d57b08ccbd39443e5d0b39a158a201")?;
-
-        println!("{:?}", signature[(signature.len() - 33)..].to_vec());
-        println!("{:?}", pk_script_from_pubkey(&decode_hex("03546112CD7BF229C36F6B1A3561D597A64FE8C36476310B7D679502484C6D3FDC")?, false));
-        println!("{:?}", pk_script_from_pubkey(&decode_hex("031BAEBE5BEFD2027C3FCBCD2FCF29EE184032992D765968647FBFC86A9F747D66")?, false));
-
-        Ok(())
-    }    
 }

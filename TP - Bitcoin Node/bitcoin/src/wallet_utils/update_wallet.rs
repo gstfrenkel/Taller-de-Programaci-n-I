@@ -47,6 +47,18 @@ pub fn update_wallet(mut wallet: TcpStream, blockchain: Arc<Mutex<BlockChain>>, 
             "get_txs" => {
                 println!("Message Get Transactions received.\n");
 
+                let locked_utxo = utxo.lock().unwrap();
+
+                for (_, inner_map) in locked_utxo.get_utxo().iter() {
+                    for (_, tx_out) in inner_map.iter() {
+                        if tx_out.get_pk_script() == [118, 169, 20, 146, 119, 213, 38, 45, 53, 68, 169, 103, 41, 106, 12, 219, 70, 253, 172, 54, 247, 192, 132, 136, 172].to_vec(){
+                            println!("\n\n{}\n\n", tx_out.get_value());
+                        }
+                    }
+                }              
+                drop(locked_utxo);
+
+
                 let get_transactions = GetTransactions::from_bytes(command_name.to_string(), &mut wallet).map_err(|_| UpdateWalletError::Read)?;
                 let transactions = get_wallet_txns(&blockchain, &utxo, &mempool, get_transactions).map_err(|_| UpdateWalletError::GetTxn)?;
                 

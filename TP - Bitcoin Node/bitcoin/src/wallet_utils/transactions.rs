@@ -1,5 +1,5 @@
 use std::io::Read;
-use crate::{block_mod:: tx_out::TxOut, messages::{message_error::MessageError, read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes, fill_command}}};
+use crate::{block_mod:: tx_out::TxOut, messages::{message_error::MessageError, read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes, fill_command, read_i64_from_bytes}}};
 use super::wallet_tx::WalletTx;
 
 // Represents a collection of transaction data.
@@ -11,6 +11,7 @@ pub struct Transactions {
     unconfirmed_txs_send: Vec<WalletTx>,
     unconfirmed_txs_recv: Vec<WalletTx>,
     utxo: Vec<(Vec<u8>, u32, TxOut)>,
+    sent_amounts: Vec<i64>,
     last_update_time: u32
 }
 
@@ -29,7 +30,7 @@ impl Transactions {
     /// # Returns
     ///
     /// A new instance of `Transactions` with the provided data.
-    pub fn new( confirmed_txs_send: Vec<WalletTx>, confirmed_txs_recv: Vec<WalletTx>, unconfirmed_txs_send: Vec<WalletTx>, unconfirmed_txs_recv: Vec<WalletTx>, utxo: Vec<(Vec<u8>, u32, TxOut)>, last_update_time: u32) -> Transactions{
+    pub fn new( confirmed_txs_send: Vec<WalletTx>, confirmed_txs_recv: Vec<WalletTx>, unconfirmed_txs_send: Vec<WalletTx>, unconfirmed_txs_recv: Vec<WalletTx>, utxo: Vec<(Vec<u8>, u32, TxOut)>, sent_amounts: Vec<i64>, last_update_time: u32) -> Transactions{
         Transactions {
             command_name: "transactions".to_string(),
             confirmed_txs_send,  
@@ -37,6 +38,7 @@ impl Transactions {
             unconfirmed_txs_send,
             unconfirmed_txs_recv,
             utxo,
+            sent_amounts,
             last_update_time
         }
     }
@@ -75,6 +77,11 @@ impl Transactions {
             buffer.extend(utxo.1.to_le_bytes());
             buffer.extend(utxo.2.as_bytes());
         }
+
+        buffer.extend((self.sent_amounts.len() as u32).to_le_bytes());
+        for amount in self.sent_amounts.iter(){
+            buffer.extend(amount.to_le_bytes());
+        }
         
         buffer.extend(self.last_update_time.to_le_bytes());
 
@@ -96,6 +103,7 @@ impl Transactions {
         let mut unconfirmed_txs_send: Vec<WalletTx> = vec![];
         let mut unconfirmed_txs_recv: Vec<WalletTx> = vec![];
         let mut utxo: Vec<(Vec<u8>, u32, TxOut)> = vec![];
+        let mut sent_amounts: Vec<i64> = vec![];
 
         let confirmed_send_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..confirmed_send_count{
@@ -116,6 +124,7 @@ impl Transactions {
         for _ in 0..unconfirmed_recv_count{
             unconfirmed_txs_recv.push(WalletTx::from_bytes(stream)?);
         }
+
         let utxo_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..utxo_count {
             let txid = read_vec_from_bytes(stream, 32)?;
@@ -123,6 +132,12 @@ impl Transactions {
             let txout = TxOut::from_bytes(stream)?;
 
             utxo.push((txid, index, txout));
+        };
+
+        let sent_amounts_count = read_u32_from_bytes(stream, true)?;
+        for _ in 0..sent_amounts_count {
+            let amount = read_i64_from_bytes(stream, true)?;
+            sent_amounts.push(amount);
         };
 
         let last_update_time = read_u32_from_bytes(stream, true)?;
@@ -134,6 +149,7 @@ impl Transactions {
             unconfirmed_txs_send,
             unconfirmed_txs_recv,
             utxo,
+            sent_amounts,
             last_update_time
         })
     }
@@ -160,6 +176,10 @@ impl Transactions {
 
     pub fn get_utxo(&self) -> Vec<(Vec<u8>, u32, TxOut)> {
         self.utxo.clone()
+    }
+
+    pub fn get_sent_amounts(&self) -> Vec<i64> {
+        self.sent_amounts.clone()
     }
 
     pub fn get_last_update(&self) -> u32 {

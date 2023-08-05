@@ -314,6 +314,7 @@ pub fn broadcast_new_txn(broadcast_tx_msg: Tx, streams: &Vec<Arc<Mutex<TcpStream
     let tx = broadcast_tx_msg.as_bytes();
     let mut count = 0;
 
+    println!("Tx broadcast message\n:{:?}", broadcast_tx_msg);
     println!("TX to be broadcasted:\n: {:?}\n\n", broadcast_tx_msg.transaction);
     println!("Is TX segwit:\n: {:?}\n\n", broadcast_tx_msg.transaction.is_segwit());
     println!("{:?}\n\n", broadcast_tx_msg.transaction.as_bytes(true));
