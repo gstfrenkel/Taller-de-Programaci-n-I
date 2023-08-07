@@ -1,6 +1,8 @@
 use super::{
     super::messages::{header::MessageHeader, version::Version},
-    network_constants::{DIG_COMMAND, DURATION_TIMEOUT_MILLIS, SHORT_ARG, VERSION_ACEPTED, SERVICES_ACEPTED},
+    network_constants::{
+        DIG_COMMAND, DURATION_TIMEOUT_MILLIS, SERVICES_ACEPTED, SHORT_ARG, VERSION_ACEPTED,
+    },
     network_error::NetworkError,
 };
 
@@ -11,8 +13,8 @@ use crate::{
 
 use std::{
     io::Write,
-    process::Command,
     net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpStream},
+    process::Command,
     str::FromStr,
     time::Duration,
 };
@@ -35,12 +37,11 @@ fn peer_discovery(dns_seed: &String) -> Result<Vec<Ipv6Addr>, NetworkError> {
 
     let peers: Vec<&str> = dns_output.lines().collect();
 
-    // No se pudo sacar este unwrap por esta dentro de un map, preguntar como sacarlo
     let ips: Vec<Ipv6Addr> = peers
         .iter()
-        .filter_map(|ip_string| match Ipv4Addr::from_str(ip_string){
+        .filter_map(|ip_string| match Ipv4Addr::from_str(ip_string) {
             Ok(ip) => Some(ip.to_ipv6_mapped()),
-            Err(_) => None
+            Err(_) => None,
         })
         .collect();
 
@@ -76,7 +77,6 @@ pub fn handshake(settings: &Settings) -> Result<Vec<TcpStream>, NetworkError> {
     let mut streams: Vec<TcpStream> = Vec::new();
 
     for ip in ips {
-
         // Se crea nuestro version
         let version = Version::new(ip, settings);
         //Se establece la conexion
@@ -91,29 +91,28 @@ pub fn handshake(settings: &Settings) -> Result<Vec<TcpStream>, NetworkError> {
         };
 
         //Se envia nuestro version
-        stream.write_all(&version.as_bytes())?;
+        stream.write_all(&version.to_bytes())?;
 
         //Se recibe el version del peer
-        let header_version = match MessageHeader::from_bytes(&mut stream){
+        let header_version = match MessageHeader::from_bytes(&mut stream) {
             Ok(header) => header,
-            Err(_) => continue
+            Err(_) => continue,
         };
-        
+
         let version_peer = match Version::from_bytes(header_version, &mut stream) {
             Ok(version) => version,
             Err(_) => continue,
         };
 
-        
-        if !is_version_compatible(&version_peer) || (version_peer.get_services() & 8 == 0){
+        if !is_version_compatible(&version_peer) || (version_peer.get_services() & 8 == 0) {
             continue;
         }
-        
+
         //Se crea nuestro verack
         let verack = MessageHeader::new(settings.get_start_string(), VERACK_COMMAND.to_string());
-        
+
         //Se envia nuestro verack
-        stream.write_all(&verack.as_bytes())?;
+        stream.write_all(&verack.to_bytes())?;
 
         //Se recibe el verack del peer
         match MessageHeader::from_bytes(&mut stream) {
@@ -126,15 +125,18 @@ pub fn handshake(settings: &Settings) -> Result<Vec<TcpStream>, NetworkError> {
             SEND_HEADERS_COMMAND.to_string(),
         );
 
-        stream.write_all(&send_headers.as_bytes())?;
+        stream.write_all(&send_headers.to_bytes())?;
 
         streams.push(stream);
     }
-        println!("\nConnection has been succesfully established with {} nodes.", streams.len());
-    
+    println!(
+        "\nConnection has been succesfully established with {} nodes.",
+        streams.len()
+    );
+
     if let Some(last) = streams.last() {
         println!("\nStream to be used: {:?}\n", last)
     }
-        
+
     Ok(streams)
 }

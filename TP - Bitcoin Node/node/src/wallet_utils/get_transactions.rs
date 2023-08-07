@@ -1,15 +1,18 @@
-use std::io::Read;
 use crate::messages::compact_size::CompactSizeUInt;
 use crate::messages::read_from_bytes::read_u32_from_bytes;
-use crate::messages::{read_from_bytes::{fill_command, read_vec_from_bytes}, message_error::MessageError};
+use crate::messages::{
+    message_error::MessageError,
+    read_from_bytes::{fill_command, read_vec_from_bytes},
+};
+use std::io::Read;
 
-///Represents a command to request transactions from the wallet. 
+///Represents a command to request transactions from the wallet.
 #[derive(Debug)]
 pub struct GetTransactions {
     command_name: String,
     pk_script: Vec<u8>,
     public_key: Vec<u8>,
-    last_update: u32
+    last_update: u32,
 }
 
 impl GetTransactions {
@@ -24,12 +27,12 @@ impl GetTransactions {
     /// # Returns
     ///
     /// A new `GetTransactions` instance.
-    pub fn new(pk_script: Vec<u8>, public_key: Vec<u8>, last_update: u32) -> GetTransactions{
-        GetTransactions{
+    pub fn new(pk_script: Vec<u8>, public_key: Vec<u8>, last_update: u32) -> GetTransactions {
+        GetTransactions {
             command_name: "get_txs".to_string(),
             pk_script,
             public_key,
-            last_update
+            last_update,
         }
     }
 
@@ -41,9 +44,9 @@ impl GetTransactions {
     /// # Returns
     ///
     /// A byte vector containing the serialized representation of the `GetTransactions` struct.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
-        buffer.extend(CompactSizeUInt::from_number(self.pk_script.len() as u64).as_bytes());
+        buffer.extend(CompactSizeUInt::from_number(self.pk_script.len() as u64).to_bytes());
         buffer.extend(&self.pk_script);
         buffer.extend(&self.public_key);
         buffer.extend(self.last_update.to_le_bytes());
@@ -64,21 +67,24 @@ impl GetTransactions {
     ///
     /// A `Result` containing the parsed `GetTransactions` struct if successful,
     /// or a `MessageError` if an error occurs during parsing.
-    pub fn from_bytes(command_name: String, stream: &mut dyn Read) -> Result<GetTransactions, MessageError> {
+    pub fn from_bytes(
+        command_name: String,
+        stream: &mut dyn Read,
+    ) -> Result<GetTransactions, MessageError> {
         let pk_script_bytes = CompactSizeUInt::from_bytes(stream)?;
         let pk_script = read_vec_from_bytes(stream, pk_script_bytes.value() as usize)?;
         let public_key = read_vec_from_bytes(stream, 33)?;
         let last_update = read_u32_from_bytes(stream, true)?;
-        
-        Ok(GetTransactions{
+
+        Ok(GetTransactions {
             command_name,
             pk_script,
             public_key,
-            last_update
+            last_update,
         })
     }
 
-    pub fn get_last_update(&self) -> u32{
+    pub fn get_last_update(&self) -> u32 {
         self.last_update
     }
 

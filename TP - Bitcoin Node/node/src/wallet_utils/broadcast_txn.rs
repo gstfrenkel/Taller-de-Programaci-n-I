@@ -1,5 +1,8 @@
+use crate::{
+    block_mod::transaction::Transaction,
+    messages::{message_error::MessageError, read_from_bytes::fill_command},
+};
 use std::io::Read;
-use crate::{block_mod::transaction::Transaction, messages::{message_error::MessageError, read_from_bytes::fill_command}};
 
 /// Represents a transaction to be broadcasted.
 ///
@@ -13,7 +16,7 @@ use crate::{block_mod::transaction::Transaction, messages::{message_error::Messa
 #[derive(Debug)]
 pub struct BroadcastTxn {
     command_name: String,
-    transaction: Transaction
+    transaction: Transaction,
 }
 
 impl BroadcastTxn {
@@ -34,7 +37,7 @@ impl BroadcastTxn {
 
         BroadcastTxn {
             command_name,
-            transaction
+            transaction,
         }
     }
 
@@ -53,12 +56,15 @@ impl BroadcastTxn {
     ///
     /// A `Result` containing the constructed `BroadcastTxn` object if successful, or an error of type
     /// `MessageError` if the bytes could not be read or the construction fails.
-    pub fn from_bytes(command_name: String, stream: &mut dyn Read) -> Result<BroadcastTxn, MessageError> {
+    pub fn from_bytes(
+        command_name: String,
+        stream: &mut dyn Read,
+    ) -> Result<BroadcastTxn, MessageError> {
         let transaction = Transaction::from_bytes(stream)?;
 
         Ok(BroadcastTxn {
             command_name,
-            transaction
+            transaction,
         })
     }
 
@@ -70,10 +76,9 @@ impl BroadcastTxn {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `BroadcastTxn` object.
-    pub fn as_bytes(&self, segwit: bool) -> Vec<u8> {
-
+    pub fn to_bytes(&self, segwit: bool) -> Vec<u8> {
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
-        buffer.extend(&self.transaction.as_bytes(segwit));
+        buffer.extend(&self.transaction.to_bytes(segwit));
 
         buffer
     }

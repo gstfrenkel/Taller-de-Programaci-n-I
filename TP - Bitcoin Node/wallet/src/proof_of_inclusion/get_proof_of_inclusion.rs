@@ -1,13 +1,12 @@
-use node::wallet_utils::merkle_block::MerkleBlock;
 use bitcoin_hashes::{sha256d, Hash};
+use node::wallet_utils::merkle_block::MerkleBlock;
 
 use crate::proof_of_inclusion::check_proof_error::CheckProofError;
-
 
 #[derive(Debug)]
 pub struct Level {
     left: Option<Vec<u8>>,
-    right: Option<Vec<u8>>
+    right: Option<Vec<u8>>,
 }
 
 /// Computes the hash of the concatenated left and right child data using the SHA-256d algorithm.
@@ -29,7 +28,7 @@ pub struct Level {
 /// The SHA-256d algorithm applies the SHA-256 hash function twice to the input data, resulting in a
 /// 256-bit hash.
 ///
-fn compute_hash(left_child: Vec<u8>, right_child: Vec<u8>) -> Vec<u8>{
+fn compute_hash(left_child: Vec<u8>, right_child: Vec<u8>) -> Vec<u8> {
     let vector = vec![left_child, right_child].concat();
 
     sha256d::Hash::hash(&vector).to_byte_array().to_vec()
@@ -69,40 +68,63 @@ pub fn get_proof_of_inclusion(mut merkle_block: MerkleBlock) -> Result<bool, Che
     println!("entra a get proof");
 
     hashes.reverse();
-    levels.push(Level{left: None, right: None}); //root
+    levels.push(Level {
+        left: None,
+        right: None,
+    }); //root
 
     while i < merkle_block.flags().len() {
-        if merkle_block.flags()[i] == 0 && merkle_block.flags()[i + 1] == 0{
-            levels.push(Level { left: hashes.pop(), right: hashes.pop() });
+        if merkle_block.flags()[i] == 0 && merkle_block.flags()[i + 1] == 0 {
+            levels.push(Level {
+                left: hashes.pop(),
+                right: hashes.pop(),
+            });
             break;
         }
 
-        if merkle_block.flags()[i] == 1{
-            levels.push(Level { left: None, right: None });
+        if merkle_block.flags()[i] == 1 {
+            levels.push(Level {
+                left: None,
+                right: None,
+            });
             i += 1;
             continue;
         }
-        levels.push(Level { left: hashes.pop(), right: None });
+        levels.push(Level {
+            left: hashes.pop(),
+            right: None,
+        });
         i += 2;
     }
-    
+
     levels.reverse();
 
     for i in 0..levels.len() {
         if levels[i + 1].right.is_none() && levels[i + 1].left.is_none() {
-            levels[i + 1].left = Some(compute_hash(levels[i].left.clone().ok_or(CheckProofError::Left)?, levels[i].right.clone().ok_or(CheckProofError::Right)?));
+            levels[i + 1].left = Some(compute_hash(
+                levels[i].left.clone().ok_or(CheckProofError::Left)?,
+                levels[i].right.clone().ok_or(CheckProofError::Right)?,
+            ));
             if (i + 1) == (levels.len() - 1) {
                 break;
             }
             levels[i + 1].right = hashes.pop();
-        }
-        else if levels[i + 1].right.is_some() && levels[i + 1].left.is_none() {
-            levels[i + 1].left = Some(compute_hash(levels[i].left.clone().ok_or(CheckProofError::Left)?, levels[i].right.clone().ok_or(CheckProofError::Right)?));
-        }
-        else {
-            levels[i + 1].right = Some(compute_hash(levels[i].left.clone().ok_or(CheckProofError::Left)?, levels[i].right.clone().ok_or(CheckProofError::Right)?));
+        } else if levels[i + 1].right.is_some() && levels[i + 1].left.is_none() {
+            levels[i + 1].left = Some(compute_hash(
+                levels[i].left.clone().ok_or(CheckProofError::Left)?,
+                levels[i].right.clone().ok_or(CheckProofError::Right)?,
+            ));
+        } else {
+            levels[i + 1].right = Some(compute_hash(
+                levels[i].left.clone().ok_or(CheckProofError::Left)?,
+                levels[i].right.clone().ok_or(CheckProofError::Right)?,
+            ));
         }
     }
 
-    Ok(&levels[levels.len() - 1].left.clone().ok_or(CheckProofError::Left)? == merkle_block.get_merkle_root())
+    Ok(&levels[levels.len() - 1]
+        .left
+        .clone()
+        .ok_or(CheckProofError::Left)?
+        == merkle_block.get_merkle_root())
 }

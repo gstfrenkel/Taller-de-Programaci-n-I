@@ -233,7 +233,9 @@ pub fn read_string_from_bytes(stream: &mut dyn Read, size: usize) -> Result<Stri
     let mut buffer = vec![0u8; size];
     stream.read_exact(&mut buffer)?;
 
-    Ok(String::from_utf8(buffer).map_err(|_| MessageError::ReadFromBytes)?.replace('\0', ""))
+    Ok(String::from_utf8(buffer)
+        .map_err(|_| MessageError::ReadFromBytes)?
+        .replace('\0', ""))
 }
 
 /// Reads a byte vector from the byte stream.
@@ -252,14 +254,13 @@ pub fn read_string_from_bytes(stream: &mut dyn Read, size: usize) -> Result<Stri
 /// Returns a `MessageError` if there was an error reading from the stream.
 pub fn read_vec_from_bytes(stream: &mut dyn Read, size: usize) -> Result<Vec<u8>, MessageError> {
     let mut buffer = vec![0u8; size];
-    
+
     match stream.read_exact(&mut buffer) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(error) => {
             println!("Error: {:?}", error);
             return Err(MessageError::ReadFromBytes);
         }
-            
     }
 
     Ok(buffer)

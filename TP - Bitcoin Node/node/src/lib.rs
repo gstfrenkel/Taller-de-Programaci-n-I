@@ -7,9 +7,9 @@
 //! - [`settings_mod`](settings_mod) - Handles configuration settings of the node.
 
 pub mod block_mod;
+pub mod block_saver;
 pub mod messages;
 pub mod network;
-pub mod settings_mod;
-pub mod block_saver;
 pub mod proof_of_inclusion_mod;
+pub mod settings_mod;
 pub mod wallet_utils;

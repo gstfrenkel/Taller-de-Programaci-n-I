@@ -60,7 +60,7 @@ impl Script {
     /// # Returns
     ///
     /// A vector of bytes representing the Script.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = vec![self.bytes];
 
         buff.extend(&self.read_bytes);

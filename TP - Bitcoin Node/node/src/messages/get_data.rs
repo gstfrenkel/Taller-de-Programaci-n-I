@@ -41,7 +41,7 @@ impl GetData {
             inventory_list,
         };
 
-        let stream: Vec<u8> = get_data.as_bytes();
+        let stream: Vec<u8> = get_data.to_bytes();
 
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
 
@@ -69,7 +69,7 @@ impl GetData {
         header: MessageHeader,
         stream: &mut dyn Read,
     ) -> Result<GetData, MessageError> {
-        if header.get_command_name() != GET_DATA_COMMAND{
+        if header.get_command_name() != GET_DATA_COMMAND {
             return Err(MessageError::InvalidInputGetData);
         }
 
@@ -91,13 +91,13 @@ impl GetData {
     /// # Returns
     ///
     /// A vector of bytes representing the `GetData` message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buffer = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = self.header.to_bytes();
 
-        buffer.extend(self.count.as_bytes());
+        buffer.extend(self.count.to_bytes());
 
         for inv in self.inventory_list.iter() {
-            buffer.extend(inv.as_bytes())
+            buffer.extend(inv.to_bytes())
         }
 
         buffer
@@ -118,7 +118,7 @@ mod get_data_test {
 
         let get_data_env = GetData::new(start_string, inventory_list);
 
-        let get_data_env_bytes = get_data_env.as_bytes();
+        let get_data_env_bytes = get_data_env.to_bytes();
 
         let mut stream = get_data_env_bytes.as_slice();
 

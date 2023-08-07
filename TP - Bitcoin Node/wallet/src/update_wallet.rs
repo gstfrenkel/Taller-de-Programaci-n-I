@@ -1,6 +1,18 @@
-use std::{time::Duration, thread, sync::{Mutex, Arc}, net::TcpStream, io::Write};
-use node::{wallet_utils::{get_transactions::GetTransactions, transactions::Transactions}, messages::read_from_bytes::read_string_from_bytes};
-use crate::{transactions::create_transactions::pk_script_from_pubkey, accounts::Accounts, interface_error::InterfaceError};
+use crate::{
+    accounts::Accounts, interface_error::InterfaceError,
+    transactions::create_transactions::pk_script_from_pubkey,
+};
+use node::{
+    messages::read_from_bytes::read_string_from_bytes,
+    wallet_utils::{get_transactions::GetTransactions, transactions::Transactions},
+};
+use std::{
+    io::Write,
+    net::TcpStream,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 /// Updates the wallet by retrieving and processing transactions from the node.
 ///
@@ -24,32 +36,48 @@ use crate::{transactions::create_transactions::pk_script_from_pubkey, accounts::
 ///
 /// Returns `Ok(())` if the wallet is successfully updated, or an `InterfaceError` if there is an
 /// error while retrieving transactions, processing them, or sending the transaction update signal.
-pub fn update_wallet(accounts: Arc<Mutex<Accounts>>, node: Arc<Mutex<TcpStream>>, txs_sender: glib::Sender<bool>) -> Result<(), InterfaceError>{
+pub fn update_wallet(
+    accounts: Arc<Mutex<Accounts>>,
+    node: Arc<Mutex<TcpStream>>,
+    txs_sender: glib::Sender<bool>,
+) -> Result<(), InterfaceError> {
     loop {
         let mut locked_accounts = accounts.lock().map_err(|_| InterfaceError::LockAccounts)?;
 
         if let Some(user_info) = locked_accounts.get_current_account_info() {
             let mut locked_node = node.lock().map_err(|_| InterfaceError::LockNode)?;
-            let pk_script = pk_script_from_pubkey(&user_info.get_public_key(), user_info.get_bech32());
-            let get_transactions = GetTransactions::new(pk_script.clone(), user_info.get_public_key(), user_info.get_last_update());
+            let pk_script =
+                pk_script_from_pubkey(&user_info.get_public_key(), user_info.get_bech32())?;
+            let get_transactions = GetTransactions::new(
+                pk_script.clone(),
+                user_info.get_public_key(),
+                user_info.get_last_update(),
+            );
 
-            locked_node.write_all(&get_transactions.as_bytes()).map_err(|_| InterfaceError::Write)?;
+            locked_node
+                .write_all(&get_transactions.to_bytes())
+                .map_err(|_| InterfaceError::Write)?;
 
-            let _ = read_string_from_bytes(&mut *locked_node, 12).map_err(|_| InterfaceError::Read)?;
-            let transactions = Transactions::from_bytes(&mut *locked_node).map_err(|_| InterfaceError::Read)?;
-            
+            let _ =
+                read_string_from_bytes(&mut *locked_node, 12).map_err(|_| InterfaceError::Read)?;
+            let transactions =
+                Transactions::from_bytes(&mut *locked_node).map_err(|_| InterfaceError::Read)?;
+
             drop(locked_node);
 
-            if !transactions.is_empty(){
+            if !transactions.is_empty() {
                 println!("\n------------------------------------------------------------\n{}'s account with public key {:?}\n", locked_accounts.get_current_username(), &user_info.get_public_key());
-                println!("Get Transaction message sent with public key script: {:?}", pk_script);
+                println!(
+                    "Get Transaction message sent with public key script: {:?}",
+                    pk_script
+                );
             }
 
             locked_accounts.update(&transactions);
-            
+
             txs_sender.send(true).map_err(|_| InterfaceError::Send)?;
         }
-        
+
         drop(locked_accounts);
         thread::sleep(Duration::from_secs(5));
     }

@@ -106,7 +106,7 @@ impl UnspentTx {
     }
 
     pub fn contains_key(&self, output: &Outpoint) -> bool {
-        if let Some(outputs) = self.utxo.get(output.get_tx_id()){
+        if let Some(outputs) = self.utxo.get(output.get_tx_id()) {
             println!("true");
             return outputs.contains_key(&output.get_index());
         }

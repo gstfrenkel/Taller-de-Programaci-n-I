@@ -46,7 +46,7 @@ impl GetHeaders {
             stopping_hash,
         };
 
-        let stream: Vec<u8> = get_headers.as_bytes();
+        let stream: Vec<u8> = get_headers.to_bytes();
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
         let checksum =
             sha256d::Hash::hash(&stream[HEADER_BYTES_SIZE..]).to_byte_array()[..4].to_vec();
@@ -71,7 +71,7 @@ impl GetHeaders {
         header: MessageHeader,
         stream: &mut dyn Read,
     ) -> Result<GetHeaders, MessageError> {
-        if header.get_command_name() != GET_HEADERS_COMMAND{
+        if header.get_command_name() != GET_HEADERS_COMMAND {
             return Err(MessageError::InvalidInputHeaders);
         }
 
@@ -94,11 +94,11 @@ impl GetHeaders {
     /// # Returns
     ///
     /// The byte representation of the `GetHeaders` message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buffer = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = self.header.to_bytes();
 
         buffer.extend(self.version.to_le_bytes());
-        buffer.extend(self.hash_count.as_bytes());
+        buffer.extend(self.hash_count.to_bytes());
         buffer.extend(&self.last_block_header);
         buffer.extend(&self.stopping_hash);
 
@@ -117,7 +117,7 @@ mod get_data_test {
         let stopping_hash = [0; 32].to_vec();
 
         let get_headers = GetHeaders::new(start_string, version, last_block_header, stopping_hash);
-        let get_headers_bytes = get_headers.as_bytes();
+        let get_headers_bytes = get_headers.to_bytes();
         let mut stream = get_headers_bytes.as_slice();
 
         let header = MessageHeader::from_bytes(&mut stream)?;

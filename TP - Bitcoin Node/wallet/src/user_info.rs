@@ -1,6 +1,7 @@
-use node::{block_mod::tx_out::TxOut, wallet_utils::{transactions::Transactions, wallet_tx::WalletTx}};
-
-use crate::transactions::create_transactions::{pk_script_from_pubkey};
+use node::{
+    block_mod::tx_out::TxOut,
+    wallet_utils::{transactions::Transactions, wallet_tx::WalletTx},
+};
 
 #[derive(Debug)]
 /// Represents the information related to a user's wallet.
@@ -14,11 +15,11 @@ pub struct UserInfo {
     unconfirmed_txs_recv: Vec<WalletTx>,
     utxo: Vec<(Vec<u8>, u32, TxOut)>,
     used_txouts: Vec<(TxOut, i64)>,
-    last_update_time: u32
+    last_update_time: u32,
 }
 
 impl UserInfo {
-    pub fn new(public_key: Vec<u8>, private_key: Vec<u8>, bech32: bool) -> UserInfo{
+    pub fn new(public_key: Vec<u8>, private_key: Vec<u8>, bech32: bool) -> UserInfo {
         UserInfo {
             public_key,
             private_key,
@@ -29,7 +30,7 @@ impl UserInfo {
             confirmed_txs_recv: vec![],
             unconfirmed_txs_send: vec![],
             unconfirmed_txs_recv: vec![],
-            last_update_time: 0
+            last_update_time: 0,
         }
     }
 
@@ -41,18 +42,14 @@ impl UserInfo {
         &self.private_key
     }
 
-    pub fn get_bech32(&self) -> bool{
+    pub fn get_bech32(&self) -> bool {
         self.bech32
-    }
-
-    pub fn get_pk_script(&self) -> Vec<u8> {
-        pk_script_from_pubkey(&self.public_key, self.bech32)
     }
 
     pub fn get_confirmed_txs_send(&self) -> &Vec<WalletTx> {
         &self.confirmed_txs_send
     }
-    
+
     pub fn get_confirmed_txs_recv(&self) -> &Vec<WalletTx> {
         &self.confirmed_txs_recv
     }
@@ -67,21 +64,6 @@ impl UserInfo {
 
     pub fn get_last_update(&self) -> u32 {
         self.last_update_time
-    }
-
-    /// Returns the total available balance based on the UTXO (Unspent Transaction Output) of the `UserInfo` struct.
-    ///
-    /// This function calculates the sum of all the values of the UTXOs in the `UserInfo` struct, representing the total available balance.
-    ///
-    /// # Returns
-    ///
-    /// The total available balance as an `i64` value.
-    pub fn get_avaiable(&self) -> i64 {
-        let mut avaiable: i64 = 0;
-        for tx in self.utxo.iter() {
-            avaiable += tx.2.get_value();
-        }
-        avaiable
     }
 
     /// Filters the UTXO (Unspent Transaction Output) of the `UserInfo` struct based on the provided list of new outgoing transactions.
@@ -120,7 +102,7 @@ impl UserInfo {
         self.last_update_time = txs.get_last_update();
     }
 
-    pub fn get_last_update_time(&self) -> u32{
+    pub fn get_last_update_time(&self) -> u32 {
         self.last_update_time
     }
 
@@ -128,7 +110,7 @@ impl UserInfo {
         self.utxo.clone()
     }
 
-    pub fn get_used_txouts(&self) -> Vec<(TxOut, i64)>{
+    pub fn get_used_txouts(&self) -> Vec<(TxOut, i64)> {
         self.used_txouts.clone()
     }
 }

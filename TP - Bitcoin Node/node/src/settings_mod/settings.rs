@@ -2,9 +2,9 @@ use crate::messages::read_from_bytes::decode_hex;
 use crate::settings_mod::settings_constants::*;
 use crate::settings_mod::settings_error::SettingError;
 use std::collections::HashMap;
-use std::{fs, env};
 use std::net::Ipv6Addr;
 use std::str::FromStr;
+use std::{env, fs};
 
 /// Configuration settings for network communication.
 #[derive(Debug)]
@@ -32,19 +32,16 @@ impl Settings {
     /// - `Some(settings)`: The loaded settings if successful.
     /// - `None`: If there was an error in reading the settings file or if the command-line arguments
     ///   were not provided correctly.
-    pub fn read_settings() -> Option<Settings>{
+    pub fn read_settings() -> Option<Settings> {
         let args: Vec<String> = env::args().collect();
-    
+
         if args.len() != 2 {
-            println!(
-                "{:?}",
-                SettingError::FileNotFound
-            );
+            println!("{:?}", SettingError::FileNotFound);
             return None;
         }
-    
+
         let path = &args[1];
-    
+
         match Settings::from_file(path) {
             Ok(settings) => Some(settings),
             Err(err) => {
@@ -110,7 +107,11 @@ impl Settings {
                 .get(DNS_SEED)
                 .ok_or(SettingError::FieldNotFound)?
                 .to_string(),
-            protocol_version: i32::from_str(parser_config.get(PROCOCOL_VERSION).ok_or(SettingError::FieldNotFound)?)?,
+            protocol_version: i32::from_str(
+                parser_config
+                    .get(PROCOCOL_VERSION)
+                    .ok_or(SettingError::FieldNotFound)?,
+            )?,
             services: parser_config
                 .get(SERVICES)
                 .ok_or(SettingError::FieldNotFound)?
@@ -132,7 +133,11 @@ impl Settings {
                 .get(RELAY)
                 .ok_or(SettingError::FieldNotFound)?
                 .parse()?,
-            start_string: decode_hex(parser_config.get(START_STRING).ok_or(SettingError::FieldNotFound)?)?,
+            start_string: decode_hex(
+                parser_config
+                    .get(START_STRING)
+                    .ok_or(SettingError::FieldNotFound)?,
+            )?,
         })
     }
 

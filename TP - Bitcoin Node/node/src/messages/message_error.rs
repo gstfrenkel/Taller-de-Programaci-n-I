@@ -1,3 +1,6 @@
+use hex::FromHexError;
+use std::num::TryFromIntError;
+
 #[derive(Debug)]
 pub enum MessageError {
     ReadFromBytes,
@@ -9,6 +12,8 @@ pub enum MessageError {
     InvalidInputPong,
     InvalidInputVersion,
     InvalidBlockCommitment,
+    DecodeHex,
+    TryInto,
 }
 
 impl From<std::io::Error> for MessageError {
@@ -17,3 +22,14 @@ impl From<std::io::Error> for MessageError {
     }
 }
 
+impl From<FromHexError> for MessageError {
+    fn from(_: FromHexError) -> MessageError {
+        MessageError::DecodeHex
+    }
+}
+
+impl From<TryFromIntError> for MessageError {
+    fn from(_: TryFromIntError) -> MessageError {
+        MessageError::TryInto
+    }
+}

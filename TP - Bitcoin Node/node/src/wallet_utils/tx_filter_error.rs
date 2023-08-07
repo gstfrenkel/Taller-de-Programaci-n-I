@@ -4,5 +4,5 @@ pub enum TxFilterError {
     DateTimeError,
     LockBlockchain,
     LockMempool,
-    LockUtxo
+    LockUtxo,
 }

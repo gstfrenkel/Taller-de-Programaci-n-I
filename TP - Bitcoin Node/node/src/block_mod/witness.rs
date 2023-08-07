@@ -5,7 +5,7 @@ use std::vec;
 
 /// Represents a witness field for a transaction input.
 #[derive(Debug, Clone)]
-pub struct Witness{
+pub struct Witness {
     pub stack_item_count: CompactSizeUInt,
     pub stack_items: Vec<Vec<u8>>,
 }
@@ -23,9 +23,9 @@ impl Witness {
     /// # Returns
     ///
     /// A new `Witness` instance.
-    pub fn new(stack_items: Vec<Vec<u8>>) -> Self{
+    pub fn new(stack_items: Vec<Vec<u8>>) -> Self {
         Witness {
-            stack_item_count: CompactSizeUInt::from_number(stack_items.len().try_into().unwrap()),
+            stack_item_count: CompactSizeUInt::from_number(stack_items.len() as u64),
             stack_items,
         }
     }
@@ -39,21 +39,24 @@ impl Witness {
     /// # Arguments
     ///
     /// * `stream` - A mutable reference to a type that implements the `Read` trait.
-    pub fn from_bytes(stream: &mut dyn Read) -> Result<Witness, MessageError> {        
+    pub fn from_bytes(stream: &mut dyn Read) -> Result<Witness, MessageError> {
         let stack_item_count = CompactSizeUInt::from_bytes(stream)?;
         let mut stack_items = vec![];
 
-        for _ in 0..stack_item_count.value(){
+        for _ in 0..stack_item_count.value() {
             let item_length = CompactSizeUInt::from_bytes(stream)?;
 
-            let mut item = vec![0u8; item_length.value().try_into().unwrap()];
+            let mut item = vec![0u8; item_length.value().try_into()?];
 
             stream.read_exact(&mut item)?;
 
             stack_items.push(item);
         }
 
-        Ok(Witness { stack_item_count, stack_items })
+        Ok(Witness {
+            stack_item_count,
+            stack_items,
+        })
     }
 
     /// Converts the Witness to its byte representation.
@@ -64,13 +67,13 @@ impl Witness {
     /// # Returns
     ///
     /// A vector of bytes representing the serialized `Witness`.
-    pub fn as_bytes(&self) -> Vec<u8>{
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = vec![];
 
-        buffer.extend(self.stack_item_count.as_bytes());
+        buffer.extend(self.stack_item_count.to_bytes());
 
-        for item in self.stack_items.clone(){
-            buffer.extend(CompactSizeUInt::from_number(item.len().try_into().unwrap()).as_bytes());
+        for item in self.stack_items.clone() {
+            buffer.extend(CompactSizeUInt::from_number(item.len() as u64).to_bytes());
             buffer.extend(item);
         }
 
@@ -85,11 +88,11 @@ impl Witness {
     /// # Returns
     ///
     /// A vector of bytes representing the public key.
-    pub fn get_pubkey(&self) -> Vec<u8>{
-        if self.stack_item_count.value() < 2{
+    pub fn get_pubkey(&self) -> Vec<u8> {
+        if self.stack_item_count.value() < 2 {
             return vec![];
         }
 
         self.stack_items[1].clone()
-    }    
+    }
 }

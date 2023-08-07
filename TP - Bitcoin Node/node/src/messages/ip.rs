@@ -51,7 +51,7 @@ impl Ip {
     /// # Returns
     ///
     /// A byte vector representing the serialized `Ip` instance.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff: Vec<u8> = vec![];
 
         buff.extend(self.time.to_le_bytes());
@@ -77,7 +77,7 @@ mod ip_test {
         let port = 25000 as u16;
 
         let ip_env = Ip::new(time, services, ip_address, port); // start_string testnet
-        let ip_env_bytes = ip_env.as_bytes();
+        let ip_env_bytes = ip_env.to_bytes();
 
         let mut stream = ip_env_bytes.as_slice();
 
@@ -96,7 +96,7 @@ mod ip_test {
         let port = 25000 as u16;
 
         let ip = Ip::new(time, services, ip_address, port); // start_string testnet
-        let ip_bytes = ip.as_bytes();
+        let ip_bytes = ip.to_bytes();
 
         println!("Ip byte size: {:?}\n", ip_bytes);
 

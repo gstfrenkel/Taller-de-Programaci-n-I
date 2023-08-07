@@ -33,7 +33,7 @@ impl Block {
         let txn_count = CompactSizeUInt::from_bytes(stream)?;
         let coinbase = Coinbase::from_bytes(stream)?;
         let mut txn_list = Vec::new();
-        
+
         for _i in 0..txn_count.value() - 1 {
             txn_list.push(Transaction::from_bytes(stream)?);
         }
@@ -82,7 +82,7 @@ impl Block {
         self.block_header.get_previuos_block_header()
     }
 
-    pub fn proof_of_work(&self) -> bool{
+    pub fn proof_of_work(&self) -> bool {
         self.block_header.proof_of_work()
     }
 }
@@ -167,6 +167,4 @@ mod block_test {
 
         Ok(())
     }
-
-
 }

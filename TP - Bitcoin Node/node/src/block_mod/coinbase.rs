@@ -3,7 +3,9 @@ use crate::block_mod::tx_out::TxOut;
 use crate::block_mod::witness::Witness;
 use crate::messages::compact_size::CompactSizeUInt;
 use crate::messages::message_error::MessageError;
-use crate::messages::read_from_bytes::{read_i32_from_bytes, read_u32_from_bytes, read_u8_from_bytes};
+use crate::messages::read_from_bytes::{
+    read_i32_from_bytes, read_u32_from_bytes, read_u8_from_bytes,
+};
 use bitcoin_hashes::sha256d;
 use bitcoin_hashes::Hash;
 use std::io::Read;
@@ -32,11 +34,11 @@ impl Coinbase {
     pub fn from_bytes(stream: &mut dyn Read) -> Result<Coinbase, MessageError> {
         let version = read_i32_from_bytes(stream, true)?;
         let mut tx_in_count = CompactSizeUInt::from_bytes(stream)?;
-        
+
         let is_segwit = tx_in_count.value() == 0;
         let mut flag = 0;
 
-        if is_segwit{
+        if is_segwit {
             flag = read_u8_from_bytes(stream)?;
             tx_in_count = CompactSizeUInt::from_bytes(stream)?;
         }
@@ -56,11 +58,11 @@ impl Coinbase {
 
         let mut witness = vec![];
 
-        if is_segwit{
-            for _ in 0..tx_in_count.value(){
+        if is_segwit {
+            for _ in 0..tx_in_count.value() {
                 witness.push(Witness::from_bytes(stream)?);
             }
-        } else{
+        } else {
             witness = vec![];
         }
 
@@ -76,7 +78,7 @@ impl Coinbase {
             lock_time,
         };
 
-        //println!("{}", coinbase);     
+        //println!("{}", coinbase);
 
         Ok(coinbase)
     }
@@ -85,21 +87,21 @@ impl Coinbase {
     ///
     /// # Returns
     /// A vector of bytes representing the `Coinbase`.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = Vec::new();
 
         buff.extend(self.version.to_le_bytes());
-        buff.extend(self.tx_in_count.as_bytes());
+        buff.extend(self.tx_in_count.to_bytes());
 
         for txin in self.tx_in_list.iter() {
             //for each?
-            buff.extend(&txin.as_bytes());
+            buff.extend(&txin.to_bytes());
         }
 
-        buff.extend(self.tx_out_count.as_bytes());
+        buff.extend(self.tx_out_count.to_bytes());
 
         for txout in self.tx_out_list.iter() {
-            buff.extend(&txout.as_bytes());
+            buff.extend(&txout.to_bytes());
         }
 
         buff.extend(self.lock_time.to_le_bytes());
@@ -112,10 +114,10 @@ impl Coinbase {
     /// # Returns
     /// A vector of bytes representing the transaction ID.
     pub fn get_id(&self) -> Vec<u8> {
-        sha256d::Hash::hash(&self.as_bytes())
+        sha256d::Hash::hash(&self.to_bytes())
             .to_byte_array()
             .to_vec()
-    }   
+    }
 }
 
 impl std::fmt::Display for Coinbase {
@@ -125,21 +127,21 @@ impl std::fmt::Display for Coinbase {
         writeln!(f, "      Txin")?;
 
         for (i, txin) in self.tx_in_list.iter().enumerate() {
-            writeln!(f, "          TxIn: {}", i+1)?;
+            writeln!(f, "          TxIn: {}", i + 1)?;
             writeln!(f, "          {:?}", txin)?;
         }
 
         writeln!(f, "      TxOut")?;
 
         for (i, txout) in self.tx_out_list.iter().enumerate() {
-            writeln!(f, "          TxOut: {}", i+1)?;
+            writeln!(f, "          TxOut: {}", i + 1)?;
             writeln!(f, "          {:?}", txout)?;
         }
 
         writeln!(f, "      Witness")?;
 
         for (i, witness) in self.witness.iter().enumerate() {
-            writeln!(f, "          Witness: {}", i+1)?;
+            writeln!(f, "          Witness: {}", i + 1)?;
             writeln!(f, "          {:?}", witness)?;
         }
 
@@ -147,4 +149,3 @@ impl std::fmt::Display for Coinbase {
         Ok(())
     }
 }
-

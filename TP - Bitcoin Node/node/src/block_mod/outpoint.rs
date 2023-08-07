@@ -31,7 +31,7 @@ impl Outpoint {
     ///
     /// # Returns
     /// A vector of bytes representing the `Outpoint` instance.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = Vec::new();
 
         buff.extend(&self.tx_id);
@@ -51,6 +51,6 @@ impl Outpoint {
     }
 
     pub fn new(tx_id: Vec<u8>, index: u32) -> Outpoint {
-        Outpoint {tx_id, index}
+        Outpoint { tx_id, index }
     }
 }

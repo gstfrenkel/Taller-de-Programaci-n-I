@@ -63,7 +63,7 @@ impl MessageHeader {
     /// # Returns
     ///
     /// * `Vec<u8>` - The byte representation of the `MessageHeader`.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff: Vec<u8> = vec![];
 
         buff.extend(self.get_start_string());
@@ -137,7 +137,7 @@ mod header_test {
         let checksum = vec![4u8, 8, 12, 53];
         header_env.update_payload(payload_size, checksum);
 
-        let header_env_bytes = header_env.as_bytes();
+        let header_env_bytes = header_env.to_bytes();
 
         let mut stream = header_env_bytes.as_slice();
 

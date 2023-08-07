@@ -34,7 +34,7 @@ impl Headers {
             headers,
         };
 
-        let stream: Vec<u8> = headers.as_bytes();
+        let stream: Vec<u8> = headers.to_bytes();
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
         let checksum =
             sha256d::Hash::hash(&stream[HEADER_BYTES_SIZE..]).to_byte_array()[..4].to_vec();
@@ -57,7 +57,7 @@ impl Headers {
         header: MessageHeader,
         stream: &mut dyn Read,
     ) -> Result<Headers, MessageError> {
-        if header.get_command_name() != HEADERS_COMMAND{
+        if header.get_command_name() != HEADERS_COMMAND {
             return Err(MessageError::InvalidInputHeaders);
         }
         let count = CompactSizeUInt::from_bytes(stream)?;
@@ -67,7 +67,7 @@ impl Headers {
             headers.push(BlockHeader::from_bytes(stream)?);
             stream.read_exact(&mut [0u8; 1])?;
         }
-        
+
         Ok(Headers {
             header,
             count,
@@ -80,13 +80,13 @@ impl Headers {
     /// # Returns
     ///
     /// The byte vector representing the serialized `Headers` message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buffer = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = self.header.to_bytes();
 
-        buffer.extend(self.count.as_bytes());
+        buffer.extend(self.count.to_bytes());
 
         for block_header in self.headers.iter() {
-            buffer.extend(block_header.as_bytes());
+            buffer.extend(block_header.to_bytes());
             buffer.push(0);
         }
         buffer
@@ -126,7 +126,7 @@ mod headers_test {
 
         let headers_env = Headers::new(start_string, block_header_list);
 
-        let header_env_bytes = headers_env.as_bytes();
+        let header_env_bytes = headers_env.to_bytes();
 
         let mut stream = header_env_bytes.as_slice();
 

@@ -5,5 +5,5 @@ pub enum UpdateWalletError {
     SendProof,
     BroadcastTx,
     LockMempool,
-    GetTxn
+    GetTxn,
 }

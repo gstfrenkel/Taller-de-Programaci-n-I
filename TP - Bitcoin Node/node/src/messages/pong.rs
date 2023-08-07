@@ -30,7 +30,7 @@ impl Pong {
 
         let mut pong = Pong { header, nonce };
 
-        let stream = pong.as_bytes();
+        let stream = pong.to_bytes();
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
         let checksum =
             sha256d::Hash::hash(&stream[HEADER_BYTES_SIZE..]).to_byte_array()[..4].to_vec();
@@ -50,7 +50,7 @@ impl Pong {
     ///
     /// A Result containing the constructed Pong message or an error if parsing fails.
     pub fn from_bytes(header: MessageHeader, stream: &mut dyn Read) -> Result<Pong, MessageError> {
-        if header.get_command_name() != PONG_COMMAND{
+        if header.get_command_name() != PONG_COMMAND {
             return Err(MessageError::InvalidInputPong);
         }
 
@@ -64,8 +64,8 @@ impl Pong {
     /// # Returns
     ///
     /// The serialized byte vector representation of the Pong message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buffer = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = self.header.to_bytes();
         buffer.extend(self.nonce.to_le_bytes());
         buffer
     }
@@ -80,7 +80,7 @@ mod pong_test {
         let start_string = vec![11, 17, 9, 7];
 
         let pong_env = Pong::new(start_string, 123456);
-        let pong_env_bytes = pong_env.as_bytes();
+        let pong_env_bytes = pong_env.to_bytes();
         let mut stream = pong_env_bytes.as_slice();
 
         let header = MessageHeader::from_bytes(&mut stream)?;

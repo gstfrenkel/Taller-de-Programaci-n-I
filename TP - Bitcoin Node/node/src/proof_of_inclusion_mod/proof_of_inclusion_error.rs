@@ -3,7 +3,7 @@ use std::num::ParseIntError;
 use crate::messages::message_error::MessageError;
 
 #[derive(Debug)]
-pub enum ProofOfInclusionError{
+pub enum ProofOfInclusionError {
     ParseMessage,
     MurMurHash,
     ParseIntError,
@@ -13,7 +13,7 @@ pub enum ProofOfInclusionError{
     BlockNotFound,
     TransactionNotFound,
     LockBlockChain,
-    WriteError
+    WriteError,
 }
 
 impl From<MessageError> for ProofOfInclusionError {

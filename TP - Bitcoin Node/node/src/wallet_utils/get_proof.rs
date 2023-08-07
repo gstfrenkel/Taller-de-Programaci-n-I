@@ -1,6 +1,9 @@
 use std::io::Read;
 
-use crate::messages::{message_error::MessageError, read_from_bytes::{read_vec_from_bytes, fill_command}};
+use crate::messages::{
+    message_error::MessageError,
+    read_from_bytes::{fill_command, read_vec_from_bytes},
+};
 
 /// Represents a "get_proof" message in the blockchain network.
 ///
@@ -16,7 +19,7 @@ use crate::messages::{message_error::MessageError, read_from_bytes::{read_vec_fr
 pub struct GetProof {
     command_name: String,
     block: Vec<u8>,
-    txn: Vec<u8>
+    txn: Vec<u8>,
 }
 
 impl GetProof {
@@ -42,7 +45,7 @@ impl GetProof {
         GetProof {
             command_name,
             block,
-            txn
+            txn,
         }
     }
 
@@ -64,21 +67,23 @@ impl GetProof {
     ///
     /// A `Result` containing the constructed `GetProof` message if successful, or a `MessageError`
     /// indicating the reason for failure.
-    pub fn from_bytes(command_name: String, stream: &mut dyn Read) -> Result<GetProof, MessageError> {
+    pub fn from_bytes(
+        command_name: String,
+        stream: &mut dyn Read,
+    ) -> Result<GetProof, MessageError> {
         let block = read_vec_from_bytes(stream, 32)?;
         let txn = read_vec_from_bytes(stream, 32)?;
-
 
         Ok(GetProof {
             command_name,
             block,
-            txn
+            txn,
         })
     }
 
     /// Serializes the `GetProof` message into a byte vector.
     ///
-    /// The `as_bytes` function serializes the `GetProof` message into a byte vector. It constructs
+    /// The `to_bytes` function serializes the `GetProof` message into a byte vector. It constructs
     /// the byte vector by concatenating the serialized command name, block, and txn fields of the
     /// `GetProof` message. The resulting byte vector represents the binary encoding of the message
     /// that can be sent over the network.
@@ -86,8 +91,7 @@ impl GetProof {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the serialized byte representation of the `GetProof` message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
         buffer.extend(&self.block);
         buffer.extend(&self.txn);

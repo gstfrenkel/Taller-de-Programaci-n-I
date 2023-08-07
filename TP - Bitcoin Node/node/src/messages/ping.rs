@@ -30,7 +30,7 @@ impl Ping {
 
         let mut ping = Ping { header, nonce };
 
-        let stream: Vec<u8> = ping.as_bytes();
+        let stream: Vec<u8> = ping.to_bytes();
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
         let checksum =
             sha256d::Hash::hash(&stream[HEADER_BYTES_SIZE..]).to_byte_array()[..4].to_vec();
@@ -50,7 +50,7 @@ impl Ping {
     ///
     /// A Result containing the parsed `Ping` message or an error if parsing fails.
     pub fn from_bytes(header: MessageHeader, stream: &mut dyn Read) -> Result<Ping, MessageError> {
-        if header.get_command_name() != PING_COMMAND{
+        if header.get_command_name() != PING_COMMAND {
             return Err(MessageError::InvalidInputPing);
         }
 
@@ -63,8 +63,8 @@ impl Ping {
     /// # Returns
     ///
     /// A byte vector representing the serialized `Ping` message.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buffer = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = self.header.to_bytes();
         buffer.extend(self.nonce.to_le_bytes());
         buffer
     }
@@ -89,7 +89,7 @@ mod ping_test {
 
         let ping_env = Ping::new(start_string, 1234);
 
-        let ping_env_bytes = ping_env.as_bytes();
+        let ping_env_bytes = ping_env.to_bytes();
 
         let mut stream = ping_env_bytes.as_slice();
 

@@ -1,6 +1,5 @@
-
 #[derive(Debug)]
-pub enum Bech32Error{
+pub enum Bech32Error {
     InvalidHRP,
     InvalidLength,
     MissingSeparator,
@@ -10,9 +9,9 @@ pub enum Bech32Error{
 }
 
 #[derive(Debug)]
-pub enum WitnessProgramError{
+pub enum WitnessProgramError {
     InvalidAddress,
-    InvalidInput,
+    InvalidConversion,
     InvalidPadding,
     InvalidVersion,
     InvalidLength,

@@ -38,7 +38,7 @@ impl Addr {
             ip_address_list,
         };
 
-        let stream: Vec<u8> = addr.as_bytes();
+        let stream: Vec<u8> = addr.to_bytes();
 
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
 
@@ -61,7 +61,7 @@ impl Addr {
     ///
     /// A `Result` containing the parsed `Addr` object if successful, or a `MessageError` if an error occurs during parsing.
     pub fn from_bytes(header: MessageHeader, stream: &mut dyn Read) -> Result<Addr, MessageError> {
-        if header.get_command_name() != ADDR_COMMAND{
+        if header.get_command_name() != ADDR_COMMAND {
             return Err(MessageError::InvalidInputAddr);
         }
 
@@ -89,13 +89,13 @@ impl Addr {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the serialized byte stream of the `Addr` object.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buff = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buff = self.header.to_bytes();
 
-        buff.extend(self.ip_address_count.as_bytes());
+        buff.extend(self.ip_address_count.to_bytes());
         self.ip_address_list
             .iter()
-            .for_each(|ip| buff.extend(ip.as_bytes()));
+            .for_each(|ip| buff.extend(ip.to_bytes()));
         buff
     }
 }
@@ -117,7 +117,7 @@ mod addr_test {
 
         let addr_env = Addr::new(start_string, ip_address_list);
 
-        let addr_env_bytes = addr_env.as_bytes();
+        let addr_env_bytes = addr_env.to_bytes();
 
         let mut stream = addr_env_bytes.as_slice();
 

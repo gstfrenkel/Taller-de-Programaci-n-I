@@ -1,11 +1,14 @@
-use crate::{block_mod::transaction::Transaction, messages::{message_error::MessageError, read_from_bytes::read_string_from_bytes}};
+use crate::{
+    block_mod::transaction::Transaction,
+    messages::{message_error::MessageError, read_from_bytes::read_string_from_bytes},
+};
 use std::io::Read;
 
 /// Represents a wallet transaction.
 #[derive(Clone, Debug)]
 pub struct WalletTx {
     transaction: Transaction,
-    date: String
+    date: String,
 }
 
 impl WalletTx {
@@ -19,11 +22,8 @@ impl WalletTx {
     /// # Returns
     ///
     /// A `WalletTx` object initialized with the provided transaction and date.
-    pub fn new(transaction: Transaction, date: String) -> WalletTx{
-        WalletTx {
-            transaction,
-            date
-        }
+    pub fn new(transaction: Transaction, date: String) -> WalletTx {
+        WalletTx { transaction, date }
     }
 
     /// Creates a `WalletTx` object by deserializing it from a byte stream.
@@ -43,7 +43,7 @@ impl WalletTx {
         let transaction = Transaction::from_bytes(stream)?;
         let date = read_string_from_bytes(stream, 10)?;
 
-        Ok(WalletTx { transaction, date})
+        Ok(WalletTx { transaction, date })
     }
 
     /// Serializes the `WalletTx` object into a byte vector.
@@ -51,10 +51,10 @@ impl WalletTx {
     /// # Returns
     ///
     /// A byte vector containing the serialized representation of the `WalletTx` object.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
 
-        buffer.extend(&self.transaction.as_bytes(self.transaction.is_segwit()));
+        buffer.extend(&self.transaction.to_bytes(self.transaction.is_segwit()));
         buffer.extend(self.date.as_bytes());
 
         buffer
@@ -67,7 +67,6 @@ impl WalletTx {
     pub fn get_date(&self) -> &String {
         &self.date
     }
-
 }
 
 #[cfg(test)]
@@ -76,7 +75,14 @@ mod header_test {
 
     #[test]
     fn test_date_time() {
-        let datetime = NaiveDateTime::from_timestamp_opt(963916800, 0).unwrap();
+        let datetime = match NaiveDateTime::from_timestamp_opt(963916800, 0) {
+            Some(datetime) => datetime,
+            None => {
+                assert!(false);
+                return;
+            }
+        };
+
         let date = datetime.date();
 
         println!("Date: {:?}", date.format("%Y-%m-%d").to_string());

@@ -1,6 +1,7 @@
 use super::{
+    message_constants::{MSG_BLOCK, MSG_TX, MSG_WITNESS_BLOCK, MSG_WITNESS_TX},
     message_error::MessageError,
-    read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes}, message_constants::{MSG_TX, MSG_BLOCK, MSG_WITNESS_TX, MSG_WITNESS_BLOCK},
+    read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes},
 };
 use std::io::Read;
 
@@ -47,18 +48,18 @@ impl Inventory {
     /// # Returns
     ///
     /// A byte vector representing the serialized inventory item.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
         buffer.extend(self.data_type.to_le_bytes());
         buffer.extend(&self.hash);
         buffer
     }
 
-    pub fn get_data(&self) -> Vec<u8>{
+    pub fn get_data(&self) -> Vec<u8> {
         self.hash.clone()
     }
 
-    pub fn get_type(&self) -> u32{
+    pub fn get_type(&self) -> u32 {
         self.data_type
     }
 
@@ -67,10 +68,10 @@ impl Inventory {
     /// This function updates the message type to a SegWit-compatible type based on the current
     /// message type. If the current message type is `MSG_TX`, it will be updated to `MSG_WITNESS_TX`.
     /// If the current message type is `MSG_BLOCK`, it will be updated to `MSG_WITNESS_BLOCK`.
-    pub fn update_to_segwit(&mut self){
-        if self.data_type == MSG_TX{
+    pub fn update_to_segwit(&mut self) {
+        if self.data_type == MSG_TX {
             self.data_type = MSG_WITNESS_TX;
-        } else if self.data_type == MSG_BLOCK{
+        } else if self.data_type == MSG_BLOCK {
             self.data_type = MSG_WITNESS_BLOCK;
         }
     }
@@ -84,7 +85,7 @@ mod inventory_test {
     fn test_new_inventory_from_bytes() -> Result<(), MessageError> {
         let inv_env = Inventory::new(2, vec![12; 32]);
 
-        let inv_env_bytes = inv_env.as_bytes();
+        let inv_env_bytes = inv_env.to_bytes();
 
         let mut stream = inv_env_bytes.as_slice();
 

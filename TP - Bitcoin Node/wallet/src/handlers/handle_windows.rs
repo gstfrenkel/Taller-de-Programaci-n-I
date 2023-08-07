@@ -1,10 +1,9 @@
-use gtk::{prelude::*};
+use gtk::prelude::*;
 use gtk::{Builder, Window};
 
 use crate::interface_error::InterfaceError;
 
-
-use super::handler_constants::{MAIN_WINDOW,LOGIN_WINDOW};
+use super::handler_constants::{LOGIN_WINDOW, MAIN_WINDOW};
 
 /// Sets up the main window and login window.
 /// # Arguments
@@ -23,7 +22,7 @@ use super::handler_constants::{MAIN_WINDOW,LOGIN_WINDOW};
 /// 2. `set_login_window`: Sets up the login window.
 ///
 
-pub fn set_windows(builder: &Builder) -> Result<(), InterfaceError>{
+pub fn set_windows(builder: &Builder) -> Result<(), InterfaceError> {
     set_main_window(builder)?;
     set_login_window(builder)?;
     Ok(())
@@ -46,8 +45,10 @@ pub fn set_windows(builder: &Builder) -> Result<(), InterfaceError>{
 /// 1. Retrieves the main window object from the builder.
 /// 2. Connects the delete event of the main window to the gtk::main_quit function, ensuring the application terminates when the window is closed.
 ///
-fn set_main_window(builder:&Builder) -> Result<(), InterfaceError>{
-    let main_window: Window = builder.get_object(MAIN_WINDOW).ok_or(InterfaceError::MissingWindow)?;
+fn set_main_window(builder: &Builder) -> Result<(), InterfaceError> {
+    let main_window: Window = builder
+        .get_object(MAIN_WINDOW)
+        .ok_or(InterfaceError::MissingWindow)?;
 
     main_window.connect_delete_event(|_, _| {
         gtk::main_quit();
@@ -76,9 +77,11 @@ fn set_main_window(builder:&Builder) -> Result<(), InterfaceError>{
 /// 2. Connects the delete event of the login window to the gtk::main_quit function, ensuring the application terminates when the window is closed.
 /// 3. Shows the login window.
 ///
-fn set_login_window(builder:&Builder) -> Result<(), InterfaceError>{
-    let login_window: Window = builder.get_object(LOGIN_WINDOW).ok_or(InterfaceError::MissingWindow)?;
-   
+fn set_login_window(builder: &Builder) -> Result<(), InterfaceError> {
+    let login_window: Window = builder
+        .get_object(LOGIN_WINDOW)
+        .ok_or(InterfaceError::MissingWindow)?;
+
     login_window.connect_delete_event(|_, _| {
         gtk::main_quit();
         Inhibit(false)
@@ -108,12 +111,14 @@ fn set_login_window(builder:&Builder) -> Result<(), InterfaceError>{
 /// 3. Shows the loading window.
 ///
 /// # Note
-/// 
-/// This functionality is not be implemented right now but is expected to be set soon 
-/// 
-pub fn set_loading_window(builder:&Builder) -> Result<(), InterfaceError>{
-    let loading_window: Window = builder.get_object("loading_window").ok_or(InterfaceError::MissingWindow)?;
-   
+///
+/// This functionality is not be implemented right now but is expected to be set soon
+///
+pub fn set_loading_window(builder: &Builder) -> Result<(), InterfaceError> {
+    let loading_window: Window = builder
+        .get_object("loading_window")
+        .ok_or(InterfaceError::MissingWindow)?;
+
     loading_window.connect_delete_event(|_, _| {
         gtk::main_quit();
         Inhibit(false)
@@ -121,6 +126,3 @@ pub fn set_loading_window(builder:&Builder) -> Result<(), InterfaceError>{
     loading_window.show_all();
     Ok(())
 }
-
-
-

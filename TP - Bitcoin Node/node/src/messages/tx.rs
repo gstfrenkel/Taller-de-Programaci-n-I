@@ -1,5 +1,8 @@
+use super::{
+    header::MessageHeader,
+    message_constants::{HEADER_BYTES_SIZE, TX_COMMAND},
+};
 use crate::block_mod::transaction::Transaction;
-use super::{header::MessageHeader, message_constants::{TX_COMMAND, HEADER_BYTES_SIZE}};
 use bitcoin_hashes::sha256d;
 use bitcoin_hashes::Hash;
 
@@ -7,7 +10,7 @@ use bitcoin_hashes::Hash;
 #[derive(Debug)]
 pub struct Tx {
     header: MessageHeader,
-    pub transaction: Transaction
+    pub transaction: Transaction,
 }
 
 impl Tx {
@@ -17,10 +20,10 @@ impl Tx {
 
         let mut tx = Tx {
             header,
-            transaction
+            transaction,
         };
 
-        let stream: Vec<u8> = tx.as_bytes();
+        let stream: Vec<u8> = tx.to_bytes();
 
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
 
@@ -33,9 +36,9 @@ impl Tx {
     }
 
     /// Converts the `Tx` object to its byte representation.
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buff = self.header.as_bytes();
-        buff.extend(self.transaction.as_bytes(self.transaction.is_segwit()));
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buff = self.header.to_bytes();
+        buff.extend(self.transaction.to_bytes(self.transaction.is_segwit()));
 
         buff
     }

@@ -82,7 +82,7 @@ impl BlockHeader {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `BlockHeader`.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = Vec::new();
 
         buffer.extend(self.block_version.to_le_bytes());
@@ -101,7 +101,7 @@ impl BlockHeader {
     ///
     /// A `Vec<u8>` representing the header hash of the `BlockHeader`.
     pub fn get_header(&self) -> Vec<u8> {
-        sha256d::Hash::hash(&self.as_bytes())
+        sha256d::Hash::hash(&self.to_bytes())
             .to_byte_array()
             .to_vec()
     }

@@ -1,17 +1,17 @@
 use std::collections::HashMap;
 
-use super::{transaction::Transaction, block::Block};
+use super::{block::Block, transaction::Transaction};
 
 /// Represents a mempool of unconfirmed transactions.
 pub struct Mempool {
-    txs: HashMap<Vec<u8>, Transaction>
+    txs: HashMap<Vec<u8>, Transaction>,
 }
 
 impl Mempool {
     /// Creates a new instance of the Mempool struct.
     pub fn new() -> Mempool {
-        Mempool{
-            txs: HashMap::new()
+        Mempool {
+            txs: HashMap::new(),
         }
     }
 
@@ -30,7 +30,7 @@ impl Mempool {
     ///
     /// * `block` - A reference to the block containing transactions to be removed from the mempool.
     pub fn update(&mut self, block: &Block) {
-        for tx in block.get_txn_list(){
+        for tx in block.get_txn_list() {
             self.txs.remove(&tx.get_id(false));
         }
     }
@@ -55,8 +55,7 @@ impl Mempool {
 }
 
 impl Default for Mempool {
-    fn default() -> Self{
+    fn default() -> Self {
         Self::new()
     }
 }
-    

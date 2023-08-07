@@ -10,15 +10,15 @@ use std::io::Read;
 pub struct TxOut {
     pub value: i64,
     pub pk_script_bytes: CompactSizeUInt,
-    pub pk_script: Vec<u8>
+    pub pk_script: Vec<u8>,
 }
 
 impl TxOut {
-    pub fn new(value: i64, pk_script: Vec<u8> ) -> TxOut {
-        TxOut { 
+    pub fn new(value: i64, pk_script: Vec<u8>) -> TxOut {
+        TxOut {
             value,
             pk_script_bytes: CompactSizeUInt::from_number(pk_script.len() as u64),
-            pk_script
+            pk_script,
         }
     }
     /// Parses a byte stream and constructs a `TxOut` (transaction output) from it.
@@ -39,7 +39,7 @@ impl TxOut {
         Ok(TxOut {
             value,
             pk_script_bytes,
-            pk_script
+            pk_script,
         })
     }
 
@@ -48,11 +48,11 @@ impl TxOut {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `TxOut`.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = Vec::new();
 
         buff.extend(self.value.to_le_bytes());
-        buff.extend(self.pk_script_bytes.as_bytes());
+        buff.extend(self.pk_script_bytes.to_bytes());
         buff.extend(&self.pk_script);
 
         buff
@@ -67,11 +67,13 @@ impl TxOut {
         self.pk_script.clone()
     }
 
-    pub fn get_pk_script_bytes(&self) -> CompactSizeUInt{
+    pub fn get_pk_script_bytes(&self) -> CompactSizeUInt {
         self.pk_script_bytes.clone()
     }
 
-    pub fn is_p2wpkh(&self) -> bool{
-        self.pk_script.len() == 22 && self.pk_script.first() == Some(&0) && self.pk_script.get(1) == Some(&20)
+    pub fn is_p2wpkh(&self) -> bool {
+        self.pk_script.len() == 22
+            && self.pk_script.first() == Some(&0)
+            && self.pk_script.get(1) == Some(&20)
     }
 }

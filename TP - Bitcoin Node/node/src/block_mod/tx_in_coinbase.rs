@@ -53,20 +53,20 @@ impl TxInCoinbase {
     ///
     /// # Returns
     /// A vector of bytes representing the `TxInCoinbase` instance.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = Vec::new();
 
         buff.extend(&self.hash);
         buff.extend(self.index.to_le_bytes());
-        buff.extend(self.script_bytes.as_bytes());
-        buff.extend(self.height.as_bytes());
+        buff.extend(self.script_bytes.to_bytes());
+        buff.extend(self.height.to_bytes());
         buff.extend(&self.coinbase_script);
         buff.extend(self.sequence.to_le_bytes());
 
         buff
     }
 
-    pub fn script(&self) -> Vec<u8>{
+    pub fn script(&self) -> Vec<u8> {
         self.coinbase_script.clone()
     }
 }

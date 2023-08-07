@@ -4,8 +4,8 @@ use crate::block_mod::blockchain::BlockChain;
 use crate::block_mod::mempool::Mempool;
 use crate::block_mod::transaction::Transaction;
 use crate::messages::inv::Inv;
-use crate::messages::tx::Tx;
 use crate::messages::message_constants::{INV_COMMAND, TX_COMMAND};
+use crate::messages::tx::Tx;
 use crate::{
     block_mod::{block::Block, utxo::UnspentTx},
     messages::{
@@ -15,7 +15,7 @@ use crate::{
         inventory::Inventory,
         message_constants::{BLOCK_COMMAND, HEADERS_COMMAND, PING_COMMAND},
         ping::Ping,
-        pong::Pong
+        pong::Pong,
     },
     settings_mod::settings::Settings,
 };
@@ -27,16 +27,16 @@ use std::{
 };
 
 /// Manages the "tx" command received over the network.
-/// 
+///
 /// This function reads a transaction from the provided `stream` and adds it to the mempool.
-/// 
+///
 /// # Arguments
 /// * `stream` - A mutable reference to a TcpStream used for network communication.
 /// * `mempool` - An Arc-wrapped Mutex for accessing and modifying the mempool.
-/// 
+///
 /// # Returns
 /// * `Result<(), NetworkError>` - A result indicating success or an error of type NetworkError.
-/// 
+///
 /// # Errors
 /// The function can return a NetworkError in the following cases:
 /// * If there is an error while reading the transaction from the stream.
@@ -44,10 +44,13 @@ use std::{
 /// * If there is an error while adding the transaction to the mempool.
 fn manage_tx_command(
     stream: &mut TcpStream,
-    mempool: &Arc<Mutex<Mempool>>
-) -> Result<(), NetworkError>{
+    mempool: &Arc<Mutex<Mempool>>,
+) -> Result<(), NetworkError> {
     let tx = Transaction::from_bytes(stream).map_err(|_| NetworkError::Broadcasting)?;
-    mempool.lock().map_err(|_| NetworkError::Broadcasting)?.add(tx);
+    mempool
+        .lock()
+        .map_err(|_| NetworkError::Broadcasting)?
+        .add(tx);
 
     println!("New transaction has been succesfully received.");
 
@@ -55,19 +58,19 @@ fn manage_tx_command(
 }
 
 /// Manages the "block" command received over the network.
-/// 
+///
 /// This function reads a block from the provided `stream` and performs the necessary operations
 /// to update the blockchain, UTXO set, and mempool if the block is valid.
-/// 
+///
 /// # Arguments
 /// * `stream` - A mutable reference to a TcpStream used for network communication.
 /// * `blockchain` - An Arc-wrapped Mutex for accessing and modifying the blockchain.
 /// * `utxo` - An Arc-wrapped Mutex for accessing and modifying the UTXO set.
 /// * `mempool` - An Arc-wrapped Mutex for accessing and modifying the mempool.
-/// 
+///
 /// # Returns
 /// * `Result<(), NetworkError>` - A result indicating success or an error of type NetworkError.
-/// 
+///
 /// # Errors
 /// The function can return a NetworkError in the following cases:
 /// * If there is an error while reading the block from the stream.
@@ -78,14 +81,22 @@ pub fn manage_block_command(
     stream: &mut TcpStream,
     blockchain: &Arc<Mutex<BlockChain>>,
     utxo: &Arc<Mutex<UnspentTx>>,
-    mempool: &Arc<Mutex<Mempool>>
+    mempool: &Arc<Mutex<Mempool>>,
 ) -> Result<(), NetworkError> {
     let block = Block::from_bytes(stream).map_err(|_| NetworkError::Broadcasting)?;
 
-    if block.proof_of_work() && block.proof_of_inclusion(){
-        utxo.lock().map_err(|_| NetworkError::Broadcasting)?.update(&block);
-        mempool.lock().map_err(|_| NetworkError::Broadcasting)?.update(&block);
-        blockchain.lock().map_err(|_| NetworkError::Broadcasting)?.add(block);
+    if block.proof_of_work() && block.proof_of_inclusion() {
+        utxo.lock()
+            .map_err(|_| NetworkError::Broadcasting)?
+            .update(&block);
+        mempool
+            .lock()
+            .map_err(|_| NetworkError::Broadcasting)?
+            .update(&block);
+        blockchain
+            .lock()
+            .map_err(|_| NetworkError::Broadcasting)?
+            .add(block);
     }
 
     println!("New block has been succesfully received.");
@@ -94,18 +105,18 @@ pub fn manage_block_command(
 }
 
 /// Manages the "inv" command received over the network.
-/// 
+///
 /// This function reads an Inv message from the provided `stream`, extracts the inventory,
 /// and sends a GetData message requesting the corresponding data.
-/// 
+///
 /// # Arguments
 /// * `header` - The MessageHeader of the received message.
 /// * `settings` - An Arc-wrapped reference to the network settings.
 /// * `stream` - A mutable reference to a TcpStream used for network communication.
-/// 
+///
 /// # Returns
 /// * `Result<(), NetworkError>` - A result indicating success or an error of type NetworkError.
-/// 
+///
 /// # Errors
 /// The function can return a NetworkError in the following cases:
 /// * If there is an error while reading the Inv message from the stream.
@@ -119,9 +130,14 @@ fn manage_inv_command(
 ) -> Result<(), NetworkError> {
     let inv = Inv::from_bytes(header, stream)?;
 
-    let inventory = inv.get_inventories().pop().ok_or(NetworkError::Broadcasting)?;
+    let inventory = inv
+        .get_inventories()
+        .pop()
+        .ok_or(NetworkError::Broadcasting)?;
     let get_data = GetData::new(settings.get_start_string(), vec![inventory]);
-    stream.write_all(&get_data.as_bytes()).map_err(|_| NetworkError::Broadcasting)?;
+    stream
+        .write_all(&get_data.to_bytes())
+        .map_err(|_| NetworkError::Broadcasting)?;
 
     Ok(())
 }
@@ -142,21 +158,26 @@ fn manage_inv_command(
 fn manage_headers_command(
     header: MessageHeader,
     settings: &Arc<Settings>,
-    stream: &mut TcpStream
+    stream: &mut TcpStream,
 ) -> Result<(), NetworkError> {
     let new_headers = Headers::from_bytes(header, stream)?;
 
-    let block_header = new_headers.get_headers().pop().ok_or(NetworkError::Broadcasting)?;
+    let block_header = new_headers
+        .get_headers()
+        .pop()
+        .ok_or(NetworkError::Broadcasting)?;
 
     if block_header.proof_of_work() {
         let inv = vec![Inventory::new(
             MSG_BLOCK_DATA_TYPE,
             block_header.get_header(),
         )];
-    
+
         let get_data = GetData::new(settings.get_start_string(), inv);
-    
-        stream.write_all(&get_data.as_bytes()).map_err(|_| NetworkError::Broadcasting)?;   
+
+        stream
+            .write_all(&get_data.to_bytes())
+            .map_err(|_| NetworkError::Broadcasting)?;
     }
     Ok(())
 }
@@ -180,7 +201,9 @@ fn manage_ping_command(
     let ping = Ping::from_bytes(header, stream).map_err(|_| NetworkError::Broadcasting)?;
     println!("Message Ping received with nonce: {}", ping.get_nonce());
     let pong = Pong::new(settings.get_start_string(), ping.get_nonce());
-    stream.write_all(&pong.as_bytes()).map_err(|_| NetworkError::Broadcasting)?;
+    stream
+        .write_all(&pong.to_bytes())
+        .map_err(|_| NetworkError::Broadcasting)?;
     println!("Message Pong sent with nonce: {}\n", ping.get_nonce());
     Ok(())
 }
@@ -204,7 +227,7 @@ pub fn handle_messages(
     stream: &mut TcpStream,
     blockchain: &Arc<Mutex<BlockChain>>,
     utxo: &Arc<Mutex<UnspentTx>>,
-    mempool: &Arc<Mutex<Mempool>>
+    mempool: &Arc<Mutex<Mempool>>,
 ) -> Result<(), NetworkError> {
     let command_name: &str = header.get_command_name().as_str();
 
@@ -214,18 +237,20 @@ pub fn handle_messages(
         }
         HEADERS_COMMAND => {
             manage_headers_command(header, settings, stream)?;
-        },
+        }
         INV_COMMAND => {
             manage_inv_command(header, settings, stream)?;
-        },
+        }
         TX_COMMAND => {
             manage_tx_command(stream, mempool)?;
-        },
+        }
         BLOCK_COMMAND => {
             manage_block_command(stream, blockchain, utxo, mempool)?;
         }
         _ => {
-            stream.read_exact(&mut vec![0u8; header.get_payload_size() as usize]).map_err(|_| NetworkError::Broadcasting)?;
+            stream
+                .read_exact(&mut vec![0u8; header.get_payload_size() as usize])
+                .map_err(|_| NetworkError::Broadcasting)?;
         }
     };
     Ok(())
@@ -248,28 +273,35 @@ pub fn broadcasting(
     streams: &mut Vec<Arc<Mutex<TcpStream>>>,
     blockchain: Arc<Mutex<BlockChain>>,
     utxo: Arc<Mutex<UnspentTx>>,
-    mempool: Arc<Mutex<Mempool>>
+    mempool: Arc<Mutex<Mempool>>,
 ) -> Result<Vec<JoinHandle<()>>, NetworkError> {
     println!("Broadcasting has begun.\n");
 
     let mut handles_broadcasting = vec![];
 
-    for stream in streams{
+    for stream in streams {
         let shared_stream = stream.clone();
         let shared_settings = settings.clone();
         let shared_blockchain = blockchain.clone();
         let shared_utxo = utxo.clone();
-        let shared_mempool  = mempool.clone();
+        let shared_mempool = mempool.clone();
 
         let handle_broadcasting = thread::spawn(move || {
             if let Ok(mut locked_stream) = shared_stream.lock() {
                 loop {
-                    if let Ok(header) = MessageHeader::from_bytes(&mut *locked_stream){
-                        if let Err(err) = handle_messages(header, &shared_settings, &mut locked_stream, &shared_blockchain, &shared_utxo, &shared_mempool) {
+                    if let Ok(header) = MessageHeader::from_bytes(&mut *locked_stream) {
+                        if let Err(err) = handle_messages(
+                            header,
+                            &shared_settings,
+                            &mut locked_stream,
+                            &shared_blockchain,
+                            &shared_utxo,
+                            &shared_mempool,
+                        ) {
                             println!("{:?}", err);
                             return;
                         }
-                    } else{
+                    } else {
                         return;
                     }
                 }
@@ -283,34 +315,48 @@ pub fn broadcasting(
 }
 
 /// Broadcasts a new transaction to a list of network streams.
-/// 
+///
 /// This function sends the provided `broadcast_tx_msg` to each stream in the `streams` list.
-/// 
+///
 /// # Arguments
 /// * `broadcast_tx_msg` - The Tx message to broadcast.
 /// * `streams` - A reference to a vector of Arc-wrapped Mutex-wrapped TcpStream objects representing network streams.
-/// 
+///
 /// # Returns
 /// * `Result<(), NetworkError>` - A result indicating success or an error of type NetworkError.
-/// 
+///
 /// # Errors
 /// The function can return a NetworkError in the following case:
 /// * If there is an error while writing to a network stream.
-pub fn broadcast_new_txn(broadcast_tx_msg: Tx, streams: &Vec<Arc<Mutex<TcpStream>>>) -> Result<(), NetworkError>{
-    let tx = broadcast_tx_msg.as_bytes();
+pub fn broadcast_new_txn(
+    broadcast_tx_msg: Tx,
+    streams: &Vec<Arc<Mutex<TcpStream>>>,
+) -> Result<(), NetworkError> {
+    let tx = broadcast_tx_msg.to_bytes();
     let mut count = 0;
 
     println!("Tx broadcast message\n:{:?}", broadcast_tx_msg);
-    println!("Tx to be broadcasted:\n: {:?}\n\n", broadcast_tx_msg.transaction);
-    println!("Is Tx segwit: {:?}\n\n", broadcast_tx_msg.transaction.is_segwit());
+    println!(
+        "Tx to be broadcasted:\n: {:?}\n\n",
+        broadcast_tx_msg.transaction
+    );
+    println!(
+        "Is Tx segwit: {:?}\n\n",
+        broadcast_tx_msg.transaction.is_segwit()
+    );
 
-    for stream in streams{
+    for stream in streams {
         if let Ok(mut locked_stream) = stream.lock() {
-            match locked_stream.write_all(&tx){
-                Ok(_) => {count += 1},
-                Err(error) => {println!("Error when attempting to broadcast created transaction: {}", error)}
+            match locked_stream.write_all(&tx) {
+                Ok(_) => count += 1,
+                Err(error) => {
+                    println!(
+                        "Error when attempting to broadcast created transaction: {}",
+                        error
+                    )
+                }
             }
-            
+
             drop(locked_stream);
         }
     }

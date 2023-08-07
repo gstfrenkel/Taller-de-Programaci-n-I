@@ -1,13 +1,17 @@
-use std::{sync::{Mutex, Arc}};
-use gtk::{Builder, prelude::BuilderExtManual, Label, LabelExt};
+use gtk::{prelude::BuilderExtManual, Builder, Label, LabelExt};
+use std::sync::{Arc, Mutex};
 
-use node::{block_mod::{transaction::Transaction, tx_out::TxOut}, messages::read_from_bytes::encode_hex, wallet_utils::wallet_tx::WalletTx};
+use node::{
+    block_mod::{transaction::Transaction, tx_out::TxOut},
+    messages::read_from_bytes::encode_hex,
+    wallet_utils::wallet_tx::WalletTx,
+};
 
-use glib::{Receiver, clone, Continue};
-use gtk::{ListStore, prelude::GtkListStoreExtManual, GtkListStoreExt};
+use glib::{clone, Continue, Receiver};
+use gtk::{prelude::GtkListStoreExtManual, GtkListStoreExt, ListStore};
 
-use crate::{accounts::Accounts, interface_error::InterfaceError};
 use super::{create_transactions::pk_script_from_pubkey, create_transactios_constants::*};
+use crate::{accounts::Accounts, interface_error::InterfaceError};
 
 /// Calculates the received balance for a specific public key script in a transaction.
 ///
@@ -63,7 +67,7 @@ pub fn send_balance(transaction: &Transaction, pk_script: &[u8]) -> f64 {
             balance += tx_out.get_value();
         }
     }
-    
+
     balance as f64 / BTC_TO_SATOSHI
 }
 
@@ -78,10 +82,10 @@ pub fn send_balance(transaction: &Transaction, pk_script: &[u8]) -> f64 {
 /// # Returns
 ///
 /// The total available funds as a `f64` value in Bitcoin.
-fn available_funds(utxo: Vec<(Vec<u8>, u32, TxOut)>) -> f64{
+fn available_funds(utxo: Vec<(Vec<u8>, u32, TxOut)>) -> f64 {
     let mut value = 0;
 
-    for txout in utxo{
+    for txout in utxo {
         value += txout.2.get_value();
     }
 
@@ -99,10 +103,10 @@ fn available_funds(utxo: Vec<(Vec<u8>, u32, TxOut)>) -> f64{
 /// # Returns
 ///
 /// The total pending funds as a `f64` value in Bitcoin.
-fn pending_funds(used_txouts: Vec<(TxOut, i64)>) -> f64{
+fn pending_funds(used_txouts: Vec<(TxOut, i64)>) -> f64 {
     let mut value = 0.0;
 
-    for (_, amount) in used_txouts{
+    for (_, amount) in used_txouts {
         value += amount as f64;
     }
 
@@ -129,20 +133,30 @@ fn pending_funds(used_txouts: Vec<(TxOut, i64)>) -> f64{
 ///
 /// Returns `Ok(())` if the update is successful, or an `InterfaceError` if there is an error
 /// encoding the transaction ID as hex.
-fn update_tx_send(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, tx_type: &str, pub_key: &[u8])-> Result<(), InterfaceError> {
+fn update_tx_send(
+    transactions: &Vec<WalletTx>,
+    store: &ListStore,
+    state: &str,
+    tx_type: &str,
+    pub_key: &[u8],
+) -> Result<(), InterfaceError> {
     for tx in transactions {
         let mut txn = tx.get_tx().get_id(false);
         txn.reverse();
-        
-        store.insert_with_values(None, &[0,1,2,3,4], &[
-            &state,
-            &tx.get_date(),
-            &tx_type,
-            &encode_hex(&txn).map_err(|_| InterfaceError::DecodeHex)?,
-            &format!("-{}", send_balance(tx.get_tx(), pub_key))
-        ]);
+
+        store.insert_with_values(
+            None,
+            &[0, 1, 2, 3, 4],
+            &[
+                &state,
+                &tx.get_date(),
+                &tx_type,
+                &encode_hex(&txn).map_err(|_| InterfaceError::DecodeHex)?,
+                &format!("-{}", send_balance(tx.get_tx(), pub_key)),
+            ],
+        );
     }
-    Ok(()) 
+    Ok(())
 }
 
 /// Updates the transaction list view for received transactions.
@@ -165,19 +179,29 @@ fn update_tx_send(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, 
 ///
 /// Returns `Ok(())` if the update is successful, or an `InterfaceError` if there is an error
 /// encoding the transaction ID as hex.
-fn update_tx_recv(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, tx_type: &str, pk_script: &Vec<u8>)-> Result<(), InterfaceError> {
+fn update_tx_recv(
+    transactions: &Vec<WalletTx>,
+    store: &ListStore,
+    state: &str,
+    tx_type: &str,
+    pk_script: &Vec<u8>,
+) -> Result<(), InterfaceError> {
     for tx in transactions {
         let mut txn = tx.get_tx().get_id(false);
         txn.reverse();
-        
-        store.insert_with_values(None, &[0,1,2,3,4], &[
-            &state,
-            &tx.get_date(),
-            &tx_type,
-            &encode_hex(&txn).map_err(|_| InterfaceError::DecodeHex)?,
-            &format!("{}", received_balance(tx.get_tx(), pk_script))
-        ]);
-    } 
+
+        store.insert_with_values(
+            None,
+            &[0, 1, 2, 3, 4],
+            &[
+                &state,
+                &tx.get_date(),
+                &tx_type,
+                &encode_hex(&txn).map_err(|_| InterfaceError::DecodeHex)?,
+                &format!("{}", received_balance(tx.get_tx(), pk_script)),
+            ],
+        );
+    }
     Ok(())
 }
 
@@ -199,19 +223,48 @@ fn update_tx_recv(transactions: &Vec<WalletTx>, store: &ListStore, state: &str, 
 ///
 /// Returns `Ok(())` if the update is successful, or an `InterfaceError` if there is an error acquiring
 /// or releasing the lock on the accounts.
-pub fn update_transactions(store: ListStore, accounts: Arc<Mutex<Accounts>>) -> Result<(), InterfaceError>{
+pub fn update_transactions(
+    store: ListStore,
+    accounts: Arc<Mutex<Accounts>>,
+) -> Result<(), InterfaceError> {
     let locked_accounts = accounts.lock().map_err(|_| InterfaceError::LockAccounts)?;
     store.clear();
 
-    let actual_account = locked_accounts.get_current_account_info().ok_or(InterfaceError::LockAccounts)?;
+    let actual_account = locked_accounts
+        .get_current_account_info()
+        .ok_or(InterfaceError::LockAccounts)?;
     let pub_key = actual_account.get_public_key();
-    let pk_script = pk_script_from_pubkey(&pub_key, actual_account.get_bech32());
+    let pk_script = pk_script_from_pubkey(&pub_key, actual_account.get_bech32())?;
 
-    update_tx_send(actual_account.get_confirmed_txs_send(), &store, CONFIRMED, SENT, &pk_script)?;
-    update_tx_recv(actual_account.get_confirmed_txs_recv(), &store, CONFIRMED, RECEIVED, &pk_script)?;
+    update_tx_send(
+        actual_account.get_confirmed_txs_send(),
+        &store,
+        CONFIRMED,
+        SENT,
+        &pk_script,
+    )?;
+    update_tx_recv(
+        actual_account.get_confirmed_txs_recv(),
+        &store,
+        CONFIRMED,
+        RECEIVED,
+        &pk_script,
+    )?;
 
-    update_tx_send(actual_account.get_unconfirmed_txs_send(), &store, UNCONFIRMED, SENT, &pk_script)?;
-    update_tx_recv(actual_account.get_unconfirmed_txs_recv(), &store, UNCONFIRMED, RECEIVED, &pk_script)?;
+    update_tx_send(
+        actual_account.get_unconfirmed_txs_send(),
+        &store,
+        UNCONFIRMED,
+        SENT,
+        &pk_script,
+    )?;
+    update_tx_recv(
+        actual_account.get_unconfirmed_txs_recv(),
+        &store,
+        UNCONFIRMED,
+        RECEIVED,
+        &pk_script,
+    )?;
 
     drop(locked_accounts);
     Ok(())
@@ -236,7 +289,12 @@ pub fn update_transactions(store: ListStore, accounts: Arc<Mutex<Accounts>>) -> 
 ///
 /// Returns `Ok(())` if the balance labels are successfully updated, or an `InterfaceError` if there
 /// is an error acquiring the lock on the `Accounts` object.
-fn update_balance_labels(available: &Label, pending: &Label, total: &Label, accounts: Arc<Mutex<Accounts>>) -> Result<(), InterfaceError>{
+fn update_balance_labels(
+    available: &Label,
+    pending: &Label,
+    total: &Label,
+    accounts: Arc<Mutex<Accounts>>,
+) -> Result<(), InterfaceError> {
     let locked_accounts = accounts.lock().map_err(|_| InterfaceError::LockAccounts)?;
     let mut available_value = 0.0;
     let mut pending_value = 0.0;
@@ -251,7 +309,7 @@ fn update_balance_labels(available: &Label, pending: &Label, total: &Label, acco
 
     available.set_text(&format!("{} BTC", available_value));
     pending.set_text(&format!("{} BTC", pending_value));
-    total.set_text(&format!("{} BTC", available_value + pending_value)); 
+    total.set_text(&format!("{} BTC", available_value + pending_value));
 
     drop(locked_accounts);
     Ok(())
@@ -281,10 +339,21 @@ fn update_balance_labels(available: &Label, pending: &Label, total: &Label, acco
 /// Returns `Ok(())` if the transaction list and balance labels are successfully updated, or an
 /// `InterfaceError` if there is an error retrieving the necessary user interface elements or
 /// during the update process.
-pub fn update_transaction_list(builder: &Builder, store: ListStore, accounts: Arc<Mutex<Accounts>>, txs_recv: Receiver<bool>)-> Result<(), InterfaceError>{
-    let available: Label = builder.get_object(DISPONIBLE_VALUE).ok_or(InterfaceError::MissingLabel)?;
-    let pending: Label= builder.get_object(PENDIENTE_VALUE).ok_or(InterfaceError::MissingLabel)?;
-    let total: Label= builder.get_object(TOTAL_VALUE).ok_or(InterfaceError::MissingLabel)?;
+pub fn update_transaction_list(
+    builder: &Builder,
+    store: ListStore,
+    accounts: Arc<Mutex<Accounts>>,
+    txs_recv: Receiver<bool>,
+) -> Result<(), InterfaceError> {
+    let available: Label = builder
+        .get_object(DISPONIBLE_VALUE)
+        .ok_or(InterfaceError::MissingLabel)?;
+    let pending: Label = builder
+        .get_object(PENDIENTE_VALUE)
+        .ok_or(InterfaceError::MissingLabel)?;
+    let total: Label = builder
+        .get_object(TOTAL_VALUE)
+        .ok_or(InterfaceError::MissingLabel)?;
 
     txs_recv.attach(
         None,

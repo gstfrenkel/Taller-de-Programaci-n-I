@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use crate::network::{
-    network_constants::{GENESIS_PREVIOUS_BLOCK_HEADER_HASH, GENESIS_VERSION, GENESIS_MERKLE_ROOT_HASH, GENESIS_TIME, GENESIS_NBITS, GENESIS_NONCE},
+use crate::network::network_constants::{
+    GENESIS_MERKLE_ROOT_HASH, GENESIS_NBITS, GENESIS_NONCE, GENESIS_PREVIOUS_BLOCK_HEADER_HASH,
+    GENESIS_TIME, GENESIS_VERSION,
 };
 
 use super::{block::Block, block_header::BlockHeader};
@@ -17,14 +18,14 @@ impl BlockChain {
     pub fn new() -> BlockChain {
         BlockChain {
             blocks: HashMap::new(),
-            last_block_header:  BlockHeader::new(
+            last_block_header: BlockHeader::new(
                 GENESIS_VERSION,
                 GENESIS_PREVIOUS_BLOCK_HEADER_HASH.to_vec(),
                 GENESIS_MERKLE_ROOT_HASH.to_vec(),
                 GENESIS_TIME,
                 GENESIS_NBITS,
                 GENESIS_NONCE,
-            )
+            ),
         }
     }
 
@@ -33,7 +34,7 @@ impl BlockChain {
     /// # Arguments
     ///
     /// * `block` - The `Block` object to be added to the blockchain.
-    pub fn add(&mut self, block: Block){
+    pub fn add(&mut self, block: Block) {
         let block_header = block.get_header();
         if self.last_block_header.get_time() < block_header.get_time() {
             self.last_block_header = block_header.clone();
@@ -41,7 +42,7 @@ impl BlockChain {
 
         self.blocks.insert(block_header.get_header(), block);
     }
-    
+
     /// Returns the number of blocks in the blockchain.
     ///
     /// # Returns
@@ -56,7 +57,8 @@ impl BlockChain {
     /// # Returns
     ///
     /// A reference to the HashMap containing the blocks in the blockchain.
-    pub fn get_blocks(&self) -> &HashMap<Vec<u8>, Block> { //tratar de sacar
+    pub fn get_blocks(&self) -> &HashMap<Vec<u8>, Block> {
+        //tratar de sacar
         &self.blocks
     }
 
@@ -88,4 +90,3 @@ impl Default for BlockChain {
         Self::new()
     }
 }
-    

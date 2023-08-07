@@ -79,7 +79,7 @@ impl CompactSizeUInt {
     /// If the size is `TWO_BYTE_SIZE`, it includes a size prefix followed by a 16-bit value in little-endian format.
     /// If the size is `FOUR_BYTE_SIZE`, it includes a size prefix followed by a 32-bit value in little-endian format.
     /// If the size is `EIGHT_BYTE_SIZE`, it includes a size prefix followed by a 64-bit value in little-endian format.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let size = self.check_size();
         let mut buffer = Vec::new();
 
@@ -115,7 +115,7 @@ mod test_compact_size {
     fn test_new_little_compact_size_from_bytes() -> Result<(), MessageError> {
         let number_env = CompactSizeUInt::from_number(56);
 
-        let number_env_bytes = number_env.as_bytes();
+        let number_env_bytes = number_env.to_bytes();
 
         let mut stream = number_env_bytes.as_slice();
 
@@ -129,7 +129,7 @@ mod test_compact_size {
     fn test_new_medium_compact_size_from_bytes() -> Result<(), MessageError> {
         let number_env = CompactSizeUInt::from_number(10000);
 
-        let number_env_bytes = number_env.as_bytes();
+        let number_env_bytes = number_env.to_bytes();
 
         let mut stream = number_env_bytes.as_slice();
 
@@ -143,7 +143,7 @@ mod test_compact_size {
     fn test_new_large_compact_size_from_bytes() -> Result<(), MessageError> {
         let number_env = CompactSizeUInt::from_number(1000000000);
 
-        let number_env_bytes = number_env.as_bytes();
+        let number_env_bytes = number_env.to_bytes();
 
         let mut stream = number_env_bytes.as_slice();
 

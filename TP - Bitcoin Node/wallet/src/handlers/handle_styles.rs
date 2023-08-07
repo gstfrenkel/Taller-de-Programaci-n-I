@@ -1,7 +1,7 @@
-use gtk::{Button, CssProviderExt, WidgetExt, ButtonExt};
-use gtk::StyleContextExt;
-use crate::interface_error::InterfaceError;
 use super::handler_constants::STYLE_PATH;
+use crate::interface_error::InterfaceError;
+use gtk::StyleContextExt;
+use gtk::{Button, ButtonExt, CssProviderExt, WidgetExt};
 
 /// Sets the style and label for a button.
 ///
@@ -29,19 +29,24 @@ use super::handler_constants::STYLE_PATH;
 /// 5. Sets the label of the button to the specified value.
 /// 6. Returns `Ok(())` if the function executes successfully.
 ///
-pub fn set_button_style(button:&Button, new_class:&str, old_class:&str, label:&str) -> Result<(), InterfaceError>{
+pub fn set_button_style(
+    button: &Button,
+    new_class: &str,
+    old_class: &str,
+    label: &str,
+) -> Result<(), InterfaceError> {
     let css_provider = gtk::CssProvider::new();
     css_provider.load_from_path(STYLE_PATH)?;
- 
+
     let style_context = button.get_style_context();
 
     style_context.remove_class(old_class);
 
     style_context.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
- 
+
     style_context.add_class(new_class);
 
     button.set_label(label);
-    
+
     Ok(())
 }

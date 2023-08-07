@@ -1,6 +1,14 @@
-use std::io::Read;
-use crate::{block_mod:: tx_out::TxOut, messages::{message_error::MessageError, read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes, fill_command, read_i64_from_bytes}}};
 use super::wallet_tx::WalletTx;
+use crate::{
+    block_mod::tx_out::TxOut,
+    messages::{
+        message_error::MessageError,
+        read_from_bytes::{
+            fill_command, read_i64_from_bytes, read_u32_from_bytes, read_vec_from_bytes,
+        },
+    },
+};
+use std::io::Read;
 
 // Represents a collection of transaction data.
 #[derive(Debug)]
@@ -12,7 +20,7 @@ pub struct Transactions {
     unconfirmed_txs_recv: Vec<WalletTx>,
     utxo: Vec<(Vec<u8>, u32, TxOut)>,
     used_txouts: Vec<(TxOut, i64)>,
-    last_update_time: u32
+    last_update_time: u32,
 }
 
 impl Transactions {
@@ -30,16 +38,24 @@ impl Transactions {
     /// # Returns
     ///
     /// A new instance of `Transactions` with the provided data.
-    pub fn new( confirmed_txs_send: Vec<WalletTx>, confirmed_txs_recv: Vec<WalletTx>, unconfirmed_txs_send: Vec<WalletTx>, unconfirmed_txs_recv: Vec<WalletTx>, utxo: Vec<(Vec<u8>, u32, TxOut)>, used_txouts: Vec<(TxOut, i64)>, last_update_time: u32) -> Transactions{
+    pub fn new(
+        confirmed_txs_send: Vec<WalletTx>,
+        confirmed_txs_recv: Vec<WalletTx>,
+        unconfirmed_txs_send: Vec<WalletTx>,
+        unconfirmed_txs_recv: Vec<WalletTx>,
+        utxo: Vec<(Vec<u8>, u32, TxOut)>,
+        used_txouts: Vec<(TxOut, i64)>,
+        last_update_time: u32,
+    ) -> Transactions {
         Transactions {
             command_name: "transactions".to_string(),
-            confirmed_txs_send,  
+            confirmed_txs_send,
             confirmed_txs_recv,
             unconfirmed_txs_send,
             unconfirmed_txs_recv,
             utxo,
             used_txouts,
-            last_update_time
+            last_update_time,
         }
     }
 
@@ -48,42 +64,42 @@ impl Transactions {
     /// # Returns
     ///
     /// A vector of bytes representing the `Transactions` struct.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
-        
+
         buffer.extend((self.confirmed_txs_send.len() as u32).to_le_bytes());
-        for tx in self.confirmed_txs_send.iter(){
-            buffer.extend(tx.as_bytes());
+        for tx in self.confirmed_txs_send.iter() {
+            buffer.extend(tx.to_bytes());
         }
 
         buffer.extend((self.confirmed_txs_recv.len() as u32).to_le_bytes());
-        for tx in self.confirmed_txs_recv.iter(){
-            buffer.extend(tx.as_bytes());
+        for tx in self.confirmed_txs_recv.iter() {
+            buffer.extend(tx.to_bytes());
         }
 
         buffer.extend((self.unconfirmed_txs_send.len() as u32).to_le_bytes());
-        for tx in self.unconfirmed_txs_send.iter(){
-            buffer.extend(tx.as_bytes());
+        for tx in self.unconfirmed_txs_send.iter() {
+            buffer.extend(tx.to_bytes());
         }
 
         buffer.extend((self.unconfirmed_txs_recv.len() as u32).to_le_bytes());
-        for tx in self.unconfirmed_txs_recv.iter(){
-            buffer.extend(tx.as_bytes());
+        for tx in self.unconfirmed_txs_recv.iter() {
+            buffer.extend(tx.to_bytes());
         }
 
         buffer.extend((self.utxo.len() as u32).to_le_bytes());
-        for utxo in self.utxo.iter(){
+        for utxo in self.utxo.iter() {
             buffer.extend(&utxo.0);
             buffer.extend(utxo.1.to_le_bytes());
-            buffer.extend(utxo.2.as_bytes());
+            buffer.extend(utxo.2.to_bytes());
         }
 
         buffer.extend((self.used_txouts.len() as u32).to_le_bytes());
-        for (txout, amount) in self.used_txouts.iter(){
-            buffer.extend(txout.as_bytes());
+        for (txout, amount) in self.used_txouts.iter() {
+            buffer.extend(txout.to_bytes());
             buffer.extend(amount.to_le_bytes());
         }
-        
+
         buffer.extend(self.last_update_time.to_le_bytes());
 
         buffer
@@ -107,22 +123,22 @@ impl Transactions {
         let mut used_txouts = vec![];
 
         let confirmed_send_count = read_u32_from_bytes(stream, true)?;
-        for _ in 0..confirmed_send_count{
+        for _ in 0..confirmed_send_count {
             confirmed_txs_send.push(WalletTx::from_bytes(stream)?);
         }
 
         let confirmed_recv_count = read_u32_from_bytes(stream, true)?;
-        for _ in 0..confirmed_recv_count{
+        for _ in 0..confirmed_recv_count {
             confirmed_txs_recv.push(WalletTx::from_bytes(stream)?);
         }
 
         let unconfirmed_send_count = read_u32_from_bytes(stream, true)?;
-        for _ in 0..unconfirmed_send_count{
+        for _ in 0..unconfirmed_send_count {
             unconfirmed_txs_send.push(WalletTx::from_bytes(stream)?);
         }
 
         let unconfirmed_recv_count = read_u32_from_bytes(stream, true)?;
-        for _ in 0..unconfirmed_recv_count{
+        for _ in 0..unconfirmed_recv_count {
             unconfirmed_txs_recv.push(WalletTx::from_bytes(stream)?);
         }
 
@@ -133,14 +149,14 @@ impl Transactions {
             let txout = TxOut::from_bytes(stream)?;
 
             utxo.push((txid, index, txout));
-        };
+        }
 
         let used_txouts_count = read_u32_from_bytes(stream, true)?;
         for _ in 0..used_txouts_count {
             let txout = TxOut::from_bytes(stream)?;
             let amount = read_i64_from_bytes(stream, true)?;
             used_txouts.push((txout, amount));
-        };
+        }
 
         let last_update_time = read_u32_from_bytes(stream, true)?;
 
@@ -152,12 +168,15 @@ impl Transactions {
             unconfirmed_txs_recv,
             utxo,
             used_txouts,
-            last_update_time
+            last_update_time,
         })
     }
 
-    pub fn is_empty(&self) -> bool{
-        self.confirmed_txs_recv.is_empty() && self.confirmed_txs_send.is_empty() && self.unconfirmed_txs_recv.is_empty() && self.unconfirmed_txs_send.is_empty()
+    pub fn is_empty(&self) -> bool {
+        self.confirmed_txs_recv.is_empty()
+            && self.confirmed_txs_send.is_empty()
+            && self.unconfirmed_txs_recv.is_empty()
+            && self.unconfirmed_txs_send.is_empty()
     }
 
     pub fn get_confirmed_txs_send(&self) -> Vec<WalletTx> {

@@ -1,9 +1,9 @@
 use super::outpoint::Outpoint;
-use crate::{messages::{
+use crate::messages::{
     compact_size::CompactSizeUInt,
     message_error::MessageError,
     read_from_bytes::{read_u32_from_bytes, read_vec_from_bytes},
-}};
+};
 use std::io::Read;
 
 /// Represents a transaction input (TxIn) in a transaction.
@@ -19,14 +19,14 @@ impl TxIn {
     pub fn new(prev_tx: Vec<u8>, prev_index: u32, script: Vec<u8>, sequence: u32) -> TxIn {
         let outpoint = Outpoint::new(prev_tx, prev_index);
 
-        TxIn{
+        TxIn {
             previous_output: outpoint,
             script_bytes: CompactSizeUInt::from_number(script.len() as u64),
             script,
-            sequence
+            sequence,
         }
     }
-    
+
     /// Parses a byte stream and constructs a `TxIn` (transaction input) from it.
     ///
     /// # Arguments
@@ -56,11 +56,11 @@ impl TxIn {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `TxIn`.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buff = Vec::new();
 
-        buff.extend(self.previous_output.as_bytes());
-        buff.extend(self.script_bytes.as_bytes());
+        buff.extend(self.previous_output.to_bytes());
+        buff.extend(self.script_bytes.to_bytes());
         buff.extend(&self.script);
         buff.extend(self.sequence.to_le_bytes());
 

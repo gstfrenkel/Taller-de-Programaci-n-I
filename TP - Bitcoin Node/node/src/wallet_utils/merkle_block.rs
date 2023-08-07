@@ -1,8 +1,8 @@
 use std::io::Read;
 
-use crate::messages::read_from_bytes::{read_vec_from_bytes, read_u8_from_bytes, fill_command};
 use crate::messages::compact_size::CompactSizeUInt;
 use crate::messages::message_error::MessageError;
+use crate::messages::read_from_bytes::{fill_command, read_u8_from_bytes, read_vec_from_bytes};
 
 /// Represents a MerkleBlock message.
 #[derive(Debug)]
@@ -12,7 +12,7 @@ pub struct MerkleBlock {
     hash_count: CompactSizeUInt,
     hashes: Vec<Vec<u8>>,
     flag_byte_count: CompactSizeUInt,
-    flags: Vec<u8>
+    flags: Vec<u8>,
 }
 
 impl MerkleBlock {
@@ -34,7 +34,7 @@ impl MerkleBlock {
             hash_count: CompactSizeUInt::from_number(hashes.len() as u64),
             hashes,
             flag_byte_count: CompactSizeUInt::from_number(flags.len() as u64),
-            flags
+            flags,
         }
     }
     /// Creates a `MerkleBlock` instance by parsing the data from a byte stream.
@@ -47,7 +47,10 @@ impl MerkleBlock {
     /// # Returns
     ///
     /// A `Result` containing the parsed `MerkleBlock` instance or a `MessageError` if the parsing fails.
-    pub fn from_bytes(command_name: String, stream: &mut dyn Read) -> Result<MerkleBlock, MessageError> {
+    pub fn from_bytes(
+        command_name: String,
+        stream: &mut dyn Read,
+    ) -> Result<MerkleBlock, MessageError> {
         let merkle_root = read_vec_from_bytes(stream, 32)?;
         let hash_count = CompactSizeUInt::from_bytes(stream)?;
         let mut hashes = Vec::new();
@@ -69,7 +72,7 @@ impl MerkleBlock {
             hash_count,
             hashes,
             flag_byte_count,
-            flags
+            flags,
         })
     }
 
@@ -78,31 +81,30 @@ impl MerkleBlock {
     /// # Returns
     ///
     /// A `Vec<u8>` containing the byte representation of the `MerkleBlock` instance.
-    pub fn as_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Vec<u8> {
         let mut buffer = fill_command(self.command_name.as_str()).as_bytes().to_vec();
         buffer.extend(&self.merkle_root);
-        buffer.extend(self.hash_count.as_bytes());
+        buffer.extend(self.hash_count.to_bytes());
 
         for hash in self.hashes.iter() {
             buffer.extend(hash);
         }
-        
-        buffer.extend(self.flag_byte_count.as_bytes());
+
+        buffer.extend(self.flag_byte_count.to_bytes());
         buffer.extend(&self.flags);
 
         buffer
     }
 
-    pub fn hashes(&self) -> Vec<Vec<u8>>{
+    pub fn hashes(&self) -> Vec<Vec<u8>> {
         self.hashes.clone()
     }
 
-    pub fn flags(&mut self) -> &Vec<u8>{
+    pub fn flags(&mut self) -> &Vec<u8> {
         &self.flags
     }
 
     pub fn get_merkle_root(&self) -> &Vec<u8> {
         &self.merkle_root
     }
-
 }

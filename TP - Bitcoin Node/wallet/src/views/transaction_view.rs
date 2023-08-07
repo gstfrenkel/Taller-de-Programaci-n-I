@@ -1,7 +1,10 @@
-use gtk::{Fixed, Label, ContainerExt, Box, FixedExt, WidgetExt, CssProviderExt, Entry, EntryExt, Adjustment, SpinButton, ButtonExt, Button, Orientation, IconSize, Separator, Align};
-use gtk::StyleContextExt;
-use crate::interface_error::InterfaceError;
 use super::views_constants::*;
+use crate::interface_error::InterfaceError;
+use gtk::StyleContextExt;
+use gtk::{
+    Adjustment, Align, Box, Button, ButtonExt, ContainerExt, CssProviderExt, Entry, EntryExt,
+    Fixed, FixedExt, IconSize, Label, Orientation, Separator, SpinButton, WidgetExt,
+};
 
 pub fn create_transaction_view(transaction_box: Box) -> Result<Fixed, InterfaceError> {
     let transaction_fixed: Fixed = Fixed::new();
@@ -20,14 +23,12 @@ pub fn create_transaction_view(transaction_box: Box) -> Result<Fixed, InterfaceE
     // Create a CSS provider and load CSS data to define the color
     let css_provider = gtk::CssProvider::new();
     let css_data = CSS_ORANGE_LABEL_CLASS;
-    css_provider
-        .load_from_data(css_data.as_bytes())?;
+    css_provider.load_from_data(css_data.as_bytes())?;
 
     // Add the CSS provider to the style context
     let style_context = pay_to_label.get_style_context();
     style_context.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
     pay_to_label.get_style_context().add_class(CSS_ORANGE_LABEL);
-
 
     let style_context = amount_label.get_style_context();
     style_context.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
@@ -36,11 +37,10 @@ pub fn create_transaction_view(transaction_box: Box) -> Result<Fixed, InterfaceE
     let style_context = btc_label.get_style_context();
     style_context.add_provider(&css_provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
     btc_label.get_style_context().add_class(CSS_ORANGE_LABEL);
-    
-    transaction_fixed.put(&pay_to_label,0,0);
-    transaction_fixed.put(&amount_label,0,40);
-    transaction_fixed.put(&btc_label, 290, 38);
 
+    transaction_fixed.put(&pay_to_label, 0, 0);
+    transaction_fixed.put(&amount_label, 0, 40);
+    transaction_fixed.put(&btc_label, 290, 38);
 
     let pay_to_entry = Entry::new();
     pay_to_entry.set_size_request(650, 34);
@@ -56,7 +56,7 @@ pub fn create_transaction_view(transaction_box: Box) -> Result<Fixed, InterfaceE
     let clear_output_button = Button::from_icon_name(Some(ERROR_ICON), IconSize::Button);
 
     let shared_transaction_fixed = transaction_fixed.clone();
-    let shared_transaction_box = transaction_box; 
+    let shared_transaction_box = transaction_box;
     clear_output_button.connect_clicked(move |_| {
         shared_transaction_box.remove(&shared_transaction_fixed);
     });

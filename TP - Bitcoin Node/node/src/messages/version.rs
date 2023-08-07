@@ -60,7 +60,7 @@ impl Version {
             relay: settings.get_relay(),
         };
 
-        let stream: Vec<u8> = version.as_bytes();
+        let stream: Vec<u8> = version.to_bytes();
 
         let payload_size = stream.len() - HEADER_BYTES_SIZE;
         let checksum =
@@ -76,7 +76,7 @@ impl Version {
         header: MessageHeader,
         stream: &mut dyn Read,
     ) -> Result<Version, MessageError> {
-        if header.get_command_name() != VERSION_COMMAND{
+        if header.get_command_name() != VERSION_COMMAND {
             return Err(MessageError::InvalidInputVersion);
         }
 
@@ -119,8 +119,8 @@ impl Version {
     }
 
     /// Implementación del trait *AsBytes* para el mensaje ***Version***
-    pub fn as_bytes(&self) -> Vec<u8> {
-        let mut buff = self.header.as_bytes();
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buff = self.header.to_bytes();
 
         buff.extend(self.version.to_le_bytes());
         buff.extend(self.services.to_le_bytes());
@@ -132,7 +132,7 @@ impl Version {
         buff.extend(self.addr_trans_ip.octets());
         buff.extend(self.addr_trans_port.to_be_bytes());
         buff.extend(self.nonce.to_le_bytes());
-        buff.extend(self.user_agent_bytes.as_bytes());
+        buff.extend(self.user_agent_bytes.to_bytes());
         buff.extend(self.user_agent.as_bytes());
         buff.extend(self.start_height.to_le_bytes());
 
@@ -161,11 +161,12 @@ mod version_test {
     fn test_new_version_from_bytes() -> Result<(), MessageError> {
         let ip_recv = Ipv6Addr::new(2, 2, 2, 2, 2, 2, 2, 2);
 
-        let settings = Settings::from_file("settings/nodo.conf").map_err(|_| MessageError::ReadFromBytes)?;
+        let settings =
+            Settings::from_file("settings/nodo.conf").map_err(|_| MessageError::ReadFromBytes)?;
 
         let version_env = Version::new(ip_recv, &settings);
 
-        let verison_env_bytes = version_env.as_bytes();
+        let verison_env_bytes = version_env.to_bytes();
 
         let mut stream = verison_env_bytes.as_slice();
 

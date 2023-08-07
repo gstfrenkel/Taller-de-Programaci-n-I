@@ -1,5 +1,9 @@
-use std::{rc::Rc, cell::RefCell};
-use gtk::{TreeView, CellLayoutExt,TreeViewColumnExt,ListStore, CellRendererText, TreeViewColumn, TreeViewExt, TreeViewGridLines, TreeModelFilter, TreeModelFilterExt, EntryCompletion, Entry, EntryCompletionExt, EntryExt, EditableSignals, BoxExt, TreeModelExt, TreeModelSort};
+use gtk::{
+    BoxExt, CellLayoutExt, CellRendererText, EditableSignals, Entry, EntryCompletion,
+    EntryCompletionExt, EntryExt, ListStore, TreeModelExt, TreeModelFilter, TreeModelFilterExt,
+    TreeModelSort, TreeView, TreeViewColumn, TreeViewColumnExt, TreeViewExt, TreeViewGridLines,
+};
+use std::{cell::RefCell, rc::Rc};
 
 use super::views_constants::*;
 
@@ -16,10 +20,10 @@ pub fn create_transaction_tree_view(store: &ListStore) -> gtk::Box {
     transaction_tree_view.set_grid_lines(TreeViewGridLines::Horizontal);
 
     // Create columns for the TreeView
-    for (column_index, column_title) in [STATE, DATE, TYPE ,LABEL, AMOUNT].iter().enumerate() {
+    for (column_index, column_title) in [STATE, DATE, TYPE, LABEL, AMOUNT].iter().enumerate() {
         let renderer = CellRendererText::new();
         let column = TreeViewColumn::new();
-        
+
         column.set_title(column_title);
         column.pack_start(&renderer, true);
         column.add_attribute(&renderer, TEXT, column_index as i32);
@@ -31,7 +35,7 @@ pub fn create_transaction_tree_view(store: &ListStore) -> gtk::Box {
         transaction_tree_view.append_column(&column);
     }
 
-     // Create a TreeModelFilter as a filter for the TreeView
+    // Create a TreeModelFilter as a filter for the TreeView
     let filter = TreeModelFilter::new(store, None);
 
     // Create a mutable reference to the Entry widget
@@ -47,7 +51,7 @@ pub fn create_transaction_tree_view(store: &ListStore) -> gtk::Box {
         for column_index in 0..model.get_n_columns() {
             let value = model.get_value(iter, column_index);
 
-            if let Ok(Some(column_text)) = value.get::<String>(){
+            if let Ok(Some(column_text)) = value.get::<String>() {
                 return column_text.contains(&filter_text);
             }
         }
@@ -63,7 +67,7 @@ pub fn create_transaction_tree_view(store: &ListStore) -> gtk::Box {
     entry.borrow().connect_changed(move |_| {
         filter.refilter();
     });
-     
+
     // Create an Entry widget for entering the filter text
     let completion = EntryCompletion::new();
     completion.set_model(Some(store));

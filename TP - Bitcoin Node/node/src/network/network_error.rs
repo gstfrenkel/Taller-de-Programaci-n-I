@@ -1,12 +1,16 @@
 use super::super::messages::message_error::MessageError;
-use std::{string::FromUtf8Error, sync::{PoisonError, MutexGuard}, net::TcpStream};
+use std::{
+    net::TcpStream,
+    string::FromUtf8Error,
+    sync::{MutexGuard, PoisonError},
+};
 
 #[derive(Debug)]
 pub enum NetworkError {
     HandShake,
     HeaderDownload,
     BlockDownload,
-    Broadcasting
+    Broadcasting,
 }
 
 impl From<std::io::Error> for NetworkError {
@@ -28,7 +32,7 @@ impl From<MessageError> for NetworkError {
 }
 
 impl From<PoisonError<MutexGuard<'_, TcpStream>>> for NetworkError {
-    fn from(_: PoisonError<MutexGuard<'_, TcpStream>>) -> NetworkError{
+    fn from(_: PoisonError<MutexGuard<'_, TcpStream>>) -> NetworkError {
         NetworkError::Broadcasting
     }
 }
