@@ -49,7 +49,7 @@ fn main() {
     let mut streams: Vec<TcpStream> = match handshake(&settings) {
         Ok(streams) => streams,
         Err(err) => {
-            println!("HOLAAAAA A{:?}", err);
+            println!("Attempt to establish handshake with other nodes has failed: {:?}", err);
             return;
         }
     };
@@ -57,7 +57,7 @@ fn main() {
     let headers: Vec<BlockHeader> = match headers_download(&settings, &mut streams) {
         Ok(headers) => headers,
         Err(err) => {
-            println!("{:?}", err);
+            println!("Attempt to download block headers has failed: {:?}", err);
             return;
         }
     };

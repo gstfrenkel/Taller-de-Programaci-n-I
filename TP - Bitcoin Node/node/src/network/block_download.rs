@@ -132,7 +132,7 @@ pub fn block_download(
                             Ok(header) => header,
                             Err(_) => {
                                 manage_block_download_error(&shared_inv, &inv);
-                                continue 'thread_loop;
+                                break 'thread_loop;
                             }
                         };
 
@@ -149,7 +149,7 @@ pub fn block_download(
                         .is_err()
                         {
                             manage_block_download_error(&shared_inv, &inv);
-                            continue 'thread_loop;
+                            break 'thread_loop;
                         }
                     }
 
@@ -157,13 +157,13 @@ pub fn block_download(
                         Ok(block) => block,
                         Err(_) => {
                             manage_block_download_error(&shared_inv, &inv);
-                            continue 'thread_loop;
+                            break 'thread_loop;
                         }
                     };
 
                     if shared_tx.send(block).is_err() {
                         manage_block_download_error(&shared_inv, &inv);
-                        continue 'thread_loop;
+                        break 'thread_loop;
                     }
                 }
             }

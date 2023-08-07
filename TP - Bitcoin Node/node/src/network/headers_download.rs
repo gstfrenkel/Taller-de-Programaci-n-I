@@ -169,10 +169,16 @@ pub fn headers_download(
     let mut file = open_headers_file()?;
 
     let mut header_list: Vec<BlockHeader> = load_headers(&mut file)?;
+    let mut count = 0;
 
     println!("{} headers are already downloaded...", header_list.len());
 
     loop {
+        count += 2000;
+        if count % 10000 == 0{
+            println!("Headers downloaded so far: {}...", count);
+        }
+
         let last_header = header_list
             .last()
             .ok_or(NetworkError::HeaderDownload)?
