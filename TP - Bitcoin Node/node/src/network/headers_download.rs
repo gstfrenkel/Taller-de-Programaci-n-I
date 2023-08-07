@@ -175,7 +175,7 @@ pub fn headers_download(
 
     loop {
         count += 2000;
-        if count % 10000 == 0{
+        if count % 10000 == 0 {
             println!("Headers downloaded so far: {}...", count);
         }
 

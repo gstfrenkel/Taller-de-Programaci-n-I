@@ -49,7 +49,10 @@ fn main() {
     let mut streams: Vec<TcpStream> = match handshake(&settings) {
         Ok(streams) => streams,
         Err(err) => {
-            println!("Attempt to establish handshake with other nodes has failed: {:?}", err);
+            println!(
+                "Attempt to establish handshake with other nodes has failed: {:?}",
+                err
+            );
             return;
         }
     };
